@@ -1,0 +1,14 @@
+Sep 8:
+-Decompiled MFP app and added new android security file for logging
+android:networkSecurityConfig="@xml/network_security_config"
+apktool b m -o x.apk --use-aapt2
+-Logged some Packets -> Hard to understand, They are using strange protocols
+
+
+Links:
+https://platinmods.com/threads/how-to-fix-apktool-decompile-error-using-mt-manager-app-arscdecoder-error.121708/
+
+Interesting:
+https://www.myfitnesspal.com/reports/printable_diary/Theo166
+https://www.myfitnesspal.com/food/diary/Theo166?date=2021-05-24
+https://www.myfitnesspal.com/profile/Theo166
