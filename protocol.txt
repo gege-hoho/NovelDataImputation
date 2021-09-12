@@ -1,8 +1,15 @@
 Sep 8:
 -Decompiled MFP app and added new android security file for logging
 android:networkSecurityConfig="@xml/network_security_config"
-apktool b m -o x.apk --use-aapt2
+Decompile: apktool d m.apk
+Compile: apktool b m -o x.apk --use-aapt2
+Sign: java -jar uberapksigner.jar --apks x.apk
 -Logged some Packets -> Hard to understand, They are using strange protocols
+
+Sep 9:
+-First version of crawler from website.
+-Crawler can login into an user account and request some user profile
+-Added logging for crawler
 
 
 Links:

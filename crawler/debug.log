@@ -1,0 +1,20 @@
+DEBUG: 09-Sep-21 14:12:40 - Starting new HTTPS connection (1): www.myfitnesspal.com:443
+DEBUG: 09-Sep-21 14:12:41 - https://www.myfitnesspal.com:443 "GET /account/login HTTP/1.1" 200 None
+DEBUG: 09-Sep-21 14:12:41 - https://www.myfitnesspal.com:443 "POST /account/login HTTP/1.1" 302 None
+DEBUG: 09-Sep-21 14:12:42 - https://www.myfitnesspal.com:443 "GET /en/ HTTP/1.1" 302 None
+DEBUG: 09-Sep-21 14:12:42 - https://www.myfitnesspal.com:443 "GET / HTTP/1.1" 200 None
+DEBUG: 09-Sep-21 14:12:57 - Starting new HTTPS connection (1): www.myfitnesspal.com:443
+DEBUG: 09-Sep-21 14:12:58 - https://www.myfitnesspal.com:443 "GET /account/login HTTP/1.1" 200 None
+DEBUG: 09-Sep-21 14:12:58 - https://www.myfitnesspal.com:443 "POST /account/login HTTP/1.1" 302 None
+DEBUG: 09-Sep-21 14:12:58 - https://www.myfitnesspal.com:443 "GET /en/ HTTP/1.1" 302 None
+DEBUG: 09-Sep-21 14:12:59 - https://www.myfitnesspal.com:443 "GET / HTTP/1.1" 200 None
+INFO: 09-Sep-21 14:13:00 - gregor@trum.eu logged in
+DEBUG: 09-Sep-21 14:13:04 - https://www.myfitnesspal.com:443 "GET /profile/Theo166 HTTP/1.1" 200 None
+DEBUG: 10-Sep-21 16:20:44 - Starting new HTTPS connection (1): www.myfitnesspal.com:443
+DEBUG: 10-Sep-21 16:20:45 - https://www.myfitnesspal.com:443 "GET /account/login HTTP/1.1" 200 None
+DEBUG: 10-Sep-21 16:20:46 - https://www.myfitnesspal.com:443 "POST /account/login HTTP/1.1" 302 None
+DEBUG: 10-Sep-21 16:20:46 - https://www.myfitnesspal.com:443 "GET /en/ HTTP/1.1" 302 None
+DEBUG: 10-Sep-21 16:20:47 - https://www.myfitnesspal.com:443 "GET / HTTP/1.1" 200 None
+INFO: 10-Sep-21 16:20:48 - gregor@trum.eu logged in
+INFO: 10-Sep-21 16:20:48 - Request profile of Theo166
+DEBUG: 10-Sep-21 16:20:52 - https://www.myfitnesspal.com:443 "GET /profile/Theo166 HTTP/1.1" 200 None
