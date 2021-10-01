@@ -11,6 +11,10 @@ Sep 9:
 -Crawler can login into an user account and request some user profile
 -Added logging for crawler
 
+Oct 1:
+-Restructured Code
+-Finished up Profile Crawler
+-Added Friends Crawler
 
 Links:
 https://platinmods.com/threads/how-to-fix-apktool-decompile-error-using-mt-manager-app-arscdecoder-error.121708/
