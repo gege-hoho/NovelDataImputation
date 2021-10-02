@@ -8,7 +8,9 @@ Created on Wed Sep  8 08:49:48 2021
 
 import requests
 from collections import deque
-from bs4 import BeautifulSoup
+import datetime
+
+from bs4 import BeautifulSoup, element
 import json
 import logging
 import re
@@ -28,6 +30,57 @@ headers = {
     "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36",
     "accept-language": "en-EN,en;q=0.9"
 }
+
+def detect_meal(meal):
+    meal_string = meal.strip().replace("\n","").lower()
+    if meal_string == 'breakfast':
+        return 'b'
+    if meal_string == 'lunch':
+        return 'l'
+    if meal_string == 'dinner':
+        return 'd'
+    if meal_string == 'snacks':
+        return 's'
+    logging.warning('could not detect %s', meal)
+    return 'u' #unkown
+
+def create_food_item(date, meal, name, calories, carbs, fat, protein, cholest, sodium, sugars, fiber):
+    return {'date': date,
+            'meal': meal,
+            'name': name,
+            'calories': calories,
+            'carbs': carbs,
+            'fat': fat,
+            'protein': protein,
+            'cholest': cholest,
+            'sodium': sodium,
+            'sugars': sugars,
+            'fiber': fiber}
+
+#extract food information for one day of food entry
+def extract_food(soup, date):
+    #nutrients = [x.text for x in soup.find('thead').find_all('td')]
+    food_item_soups = soup.find('tbody').find_all("tr")
+    meal = ""
+    food_items = []
+    for food_item_soup in food_item_soups:
+        curr_class = food_item_soup.get('class')
+        curr_name = food_item_soup.name
+        if curr_class is not None and 'title' in curr_class:
+            meal = detect_meal(food_item_soup.text)
+            #logging.debug(meal)
+            continue
+        if curr_name =='tr':
+            infos = [x.text for x in food_item_soup.find_all('td')]
+            food_item = create_food_item(date, meal,infos[0],infos[1],infos[2],
+                                         infos[3],infos[4],infos[5],
+                                         infos[6],infos[7], infos[8])
+            food_items.append(food_item)
+    return food_items
+
+def exctract_excercise(soup):
+    pass
+    
 
 class MyFitnessPalCrawler:
     def __init__(self,email,password):
@@ -143,6 +196,33 @@ class MyFitnessPalCrawler:
             friends.extend(curr_friends)
         return friends
     
+    def crawl_diary(self, username, from_date, to_date):
+        soup = self.get(endpoints.diary_endpoint.format(username, 
+                                                        from_date.strftime('%Y-%m-%d'),
+                                                        to_date.strftime('%Y-%m-%d')))
+        
+        dates = soup.find("h2", {"id":"date"}).previous_sibling
+        current_date = None
+        for sibling in dates.next_siblings:
+            if type(sibling) is not element.Tag:
+                #current node is no html tag therefore skip it
+                continue
+            if sibling.get('id') == 'date':
+                #new date
+                current_date = datetime.datetime.strptime(sibling.text, '%B %d, %Y').date()
+                #logging.debug(current_date)
+            elif sibling.get('id') == 'excercise':
+                #exercise entry
+                exctract_excercise(sibling)
+            elif sibling.get('id') == 'food':
+                #food_entry
+                 x = extract_food(sibling, current_date)
+                 logging.debug(str(x))       
+            else:
+                logging.warning('Unexpected tag %s', str(sibling))
+            
+            
+
 #read the secrets from file
 f = open("secret.json",'r')
 secret_config = json.loads(f.read())
@@ -151,15 +231,23 @@ self =MyFitnessPalCrawler(secret_config["email"],secret_config["password"])
 #x.crawl_profile("PrincessLou71186")
 username = "amgjb"
 self.crawl_profile(username)
+username = "Theo166"
+to_date = datetime.date(2021,10,1)
+from_date = to_date - datetime.timedelta(days=365)
+self.crawl_diary(username,from_date,to_date)
 
-queue = deque()
-queue.append("Theo166")
 
-crawled = []
-for i in range(30):
-    curr_user = queue.popleft()
-    friends = self.crawl_friends(curr_user)
-    crawled.append(curr_user)
-    queue.extend([x for x in friends if x not in queue and x not in crawled])
 
+
+
+#queue = deque()
+#queue.append("Theo166")
+
+#crawled = []
+#for i in range(30):
+#    curr_user = queue.popleft()
+#    friends = self.crawl_friends(curr_user)
+#    crawled.append(curr_user)
+#    queue.extend([x for x in friends if x not in queue and x not in crawled])
+#
 
