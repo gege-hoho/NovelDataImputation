@@ -16,6 +16,12 @@ Oct 1:
 -Finished up Profile Crawler
 -Added Friends Crawler
 
+Oct 2:
+-Added Crawler for Food from Diary
+
+Oct 3:
+-Added database
+-Restructured Project
 Links:
 https://platinmods.com/threads/how-to-fix-apktool-decompile-error-using-mt-manager-app-arscdecoder-error.121708/
 
