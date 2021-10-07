@@ -42,7 +42,30 @@ def detect_meal(meal):
     return 'u'  # unkown
 
 
-def create_food_item(date, meal, name, calories, carbs, fat, protein, cholest, sodium, sugars, fiber):
+def process_nutrient(nutrient, expected_unit=None):
+    """
+
+    :param nutrient: The nutrient to be process eg. 5g
+    :type nutrient: str
+    :param expected_unit: The expected unit eg. mg or g or none if no unit
+    :type expected_unit: str
+    :return: int
+    :rtype: int
+    """
+    n = nutrient.replace(',','')
+    if expected_unit:
+        n = n.split(expected_unit)[0]
+
+    if n.isnumeric():
+        return int(n)
+    elif n == '--':
+        return None
+    else:
+        logging.error("Cant process nutrient %s with %s", nutrient, expected_unit)
+        return None
+
+
+def create_food_entry(date, meal, name, calories, carbs, fat, protein, cholest, sodium, sugars, fiber):
     """
     Creates food item entry
     :return: Food item entry
@@ -50,15 +73,18 @@ def create_food_item(date, meal, name, calories, carbs, fat, protein, cholest, s
     """
     return {'date': date,
             'meal': meal,
-            'name': name,
-            'calories': calories,
-            'carbs': carbs,
-            'fat': fat,
-            'protein': protein,
-            'cholest': cholest,
-            'sodium': sodium,
-            'sugars': sugars,
-            'fiber': fiber}
+            'item': {
+                'name': name,
+                'calories': process_nutrient(calories),
+                'carbs': process_nutrient(carbs, 'g'),
+                'fat': process_nutrient(fat, 'g'),
+                'protein': process_nutrient(protein, 'g'),
+                'cholest': process_nutrient(cholest, 'mg'),
+                'sodium': process_nutrient(sodium, 'mg'),
+                'sugars': process_nutrient(sugars, 'g'),
+                'fiber': process_nutrient(fiber, 'g')
+            }
+            }
 
 
 # extract food information for one day of food entry
@@ -76,9 +102,9 @@ def extract_food(soup, date):
             continue
         if curr_name == 'tr':
             infos = [x.text for x in food_item_soup.find_all('td')]
-            food_item = create_food_item(date, meal, infos[0], infos[1], infos[2],
-                                         infos[3], infos[4], infos[5],
-                                         infos[6], infos[7], infos[8])
+            food_item = create_food_entry(date, meal, infos[0], infos[1], infos[2],
+                                          infos[3], infos[4], infos[5],
+                                          infos[6], infos[7], infos[8])
             food_items.append(food_item)
     return food_items
 
@@ -177,7 +203,7 @@ class MyFitnessPalCrawler:
                 joined = [""]
             elif len(joined) > 1:
                 logging.warning("Found more than expected joined date: %s", " ".join(joined))
-            user_data["joined"] = joined[0]
+            user_data["joined"] = datetime.datetime.strptime(joined[0], '%B %d, %Y').date()
 
             # this means that a location is public
             if len(profile_text) == 3:
@@ -229,6 +255,7 @@ class MyFitnessPalCrawler:
                                                         to_date.strftime(date_format)))
 
         dates = soup.find("h2", {"id": "date"}).previous_sibling
+        data = []
         current_date = None
         for sibling in dates.next_siblings:
             if type(sibling) is not element.Tag:
@@ -244,7 +271,9 @@ class MyFitnessPalCrawler:
             elif sibling.get('id') == 'food':
                 # food_entry
                 x = extract_food(sibling, current_date)
+                data.extend(x)
                 logging.debug(str(x))
             else:
                 logging.warning('Unexpected tag %s', str(sibling))
 
+        return data

@@ -22,6 +22,15 @@ Oct 2:
 Oct 3:
 -Added database
 -Restructured Project
+
+Oct 5:
+-Added data model for diary entries
+-added everything in regarding this in the databaseConnector
+
+Oct 7:
+-Added mode for crawling of diaries
+-Add config file
+-Sanity checks for config before startup
 Links:
 https://platinmods.com/threads/how-to-fix-apktool-decompile-error-using-mt-manager-app-arscdecoder-error.121708/
 
