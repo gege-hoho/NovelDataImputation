@@ -1,3 +1,5 @@
 {
-  "mode": "diaries"
+  "database-path": "databaseConnector/mfp.db",
+  "mode": "diaries",
+  "sleep-time": 2
 }

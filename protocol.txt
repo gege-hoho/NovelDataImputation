@@ -31,6 +31,15 @@ Oct 7:
 -Added mode for crawling of diaries
 -Add config file
 -Sanity checks for config before startup
+
+Oct 8:
+-Added more stuff to database
+
+Oct 9:
+-Added possibility to crawl not english diaries
+-Handle password protected diaries
+-Handle diaries with more than 1000 entries
+
 Links:
 https://platinmods.com/threads/how-to-fix-apktool-decompile-error-using-mt-manager-app-arscdecoder-error.121708/
 

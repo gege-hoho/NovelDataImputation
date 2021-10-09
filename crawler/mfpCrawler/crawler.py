@@ -7,6 +7,7 @@ Created on Wed Sep  8 08:49:48 2021
 """
 
 import requests
+from translate import Translator
 import datetime
 from bs4 import BeautifulSoup, element
 import logging
@@ -21,27 +22,6 @@ headers = {
 }
 
 
-def detect_meal(meal):
-    """
-    Formats the string and converts it to one of the meal types
-    :param meal: str
-    :type meal:
-    :return: meal type (b,l,d,s,u)
-    :rtype: str
-    """
-    meal_string = meal.strip().replace("\n", "").lower()
-    if meal_string == 'breakfast':
-        return 'b'
-    if meal_string == 'lunch':
-        return 'l'
-    if meal_string == 'dinner':
-        return 'd'
-    if meal_string == 'snacks':
-        return 's'
-    logging.warning('could not detect %s', meal)
-    return 'u'  # unkown
-
-
 def process_nutrient(nutrient, expected_unit=None):
     """
 
@@ -52,7 +32,7 @@ def process_nutrient(nutrient, expected_unit=None):
     :return: int
     :rtype: int
     """
-    n = nutrient.replace(',','')
+    n = nutrient.replace(',', '')
     if expected_unit:
         n = n.split(expected_unit)[0]
 
@@ -87,35 +67,11 @@ def create_food_entry(date, meal, name, calories, carbs, fat, protein, cholest, 
             }
 
 
-# extract food information for one day of food entry
-def extract_food(soup, date):
-    # nutrients = [x.text for x in soup.find('thead').find_all('td')]
-    food_item_soups = soup.find('tbody').find_all("tr")
-    meal = ""
-    food_items = []
-    for food_item_soup in food_item_soups:
-        curr_class = food_item_soup.get('class')
-        curr_name = food_item_soup.name
-        if curr_class is not None and 'title' in curr_class:
-            meal = detect_meal(food_item_soup.text)
-            # logging.debug(meal)
-            continue
-        if curr_name == 'tr':
-            infos = [x.text for x in food_item_soup.find_all('td')]
-            food_item = create_food_entry(date, meal, infos[0], infos[1], infos[2],
-                                          infos[3], infos[4], infos[5],
-                                          infos[6], infos[7], infos[8])
-            food_items.append(food_item)
-    return food_items
-
-
-def extract_exercise(soup):
-    pass
-
-
 class MyFitnessPalCrawler:
     def __init__(self, email, password):
         self.session = requests.Session()
+        self.translator = Translator(to_lang='en', from_lang='autodetect')
+        self.translations = []
         self.friend_page_limit = 100
         # conatins the last request
         self.last_request = None
@@ -153,8 +109,72 @@ class MyFitnessPalCrawler:
         links = [x.get("href") for x in soup.find_all("a")]
         logged = '/account/logout' in links
         if not logged:
-            logging.warn("it seems that  we aren't logged in anymore")
+            logging.warning("it seems that  we aren't logged in anymore")
         return logged
+
+    def extract_food(self, soup, date):
+        """
+        extract food information for one day of food entry
+        :param soup: Soup from which the data should be extracted
+        :type soup:
+        :param date: current date
+        :type date: date
+        :return: List of food items
+        :rtype: list
+        """
+        # nutrients = [x.text for x in soup.find('thead').find_all('td')]
+        food_item_soups = soup.find('tbody').find_all("tr")
+        meal = ""
+        food_items = []
+        for food_item_soup in food_item_soups:
+            curr_class = food_item_soup.get('class')
+            curr_name = food_item_soup.name
+            if curr_class is not None and 'title' in curr_class:
+                meal = self.detect_meal(food_item_soup.text)
+                # logging.debug(meal)
+                continue
+            if curr_name == 'tr':
+                infos = [x.text for x in food_item_soup.find_all('td')]
+                food_item = create_food_entry(date, meal, infos[0], infos[1], infos[2],
+                                              infos[3], infos[4], infos[5],
+                                              infos[6], infos[7], infos[8])
+                food_items.append(food_item)
+        return food_items
+
+    def detect_meal(self, meal):
+        """
+        Formats the string and converts it to one of the meal types
+        :param meal: str
+        :type meal:
+        :return: meal type (b,l,d,s,u)
+        :rtype: str
+        """
+        meal_types = ['breakfast', 'lunch', 'dinner', 'snacks']
+        meal_string = meal.strip().replace("\n", "").lower()
+
+        match = re.compile("meal ([0-9])").match(meal_string)
+        if match:
+            return match.group(0)  # 0 or 1,2,...
+        if meal_string in meal_types:
+            return meal_string
+
+        translation = next((b for (a, b) in self.translations if a == meal_string), None)
+        if translation:
+            return translation
+
+        translation = self.translator.translate(meal_string)
+        translation = translation.strip().replace("\n", "").lower()
+        logging.info("Translated %s to %s", meal_string, translation)
+        if translation == 'snack':
+            translation = 'snacks'
+
+        if translation in meal_types:
+            logging.debug("added %s %s to translation", meal_string, translation)
+            self.translations.append((meal_string, translation))
+            return translation
+
+        logging.info("couldn't match %s", meal_string)
+        return 'unknown'
 
     def crawl_profile(self, username):
         """
@@ -253,8 +273,16 @@ class MyFitnessPalCrawler:
         soup = self.get(endpoints.diary_endpoint.format(username,
                                                         from_date.strftime(date_format),
                                                         to_date.strftime(date_format)))
+        title = soup.find('h1', {'class': 'main-title'})
+        if title and title.text == 'Password Required':
+            logging.info("Password required to enter diary")
+            return [], 'password'
 
-        dates = soup.find("h2", {"id": "date"}).previous_sibling
+        dates = soup.find("h2", {"id": "date"})
+        if dates.text == 'No diary entries were found for this date range.':
+            logging.info("No diary entries were found for the date range")
+            return [], 'range'
+        dates = dates.previous_sibling
         data = []
         current_date = None
         for sibling in dates.next_siblings:
@@ -265,15 +293,17 @@ class MyFitnessPalCrawler:
                 # new date
                 current_date = datetime.datetime.strptime(sibling.text, '%B %d, %Y').date()
                 # logging.debug(current_date)
-            elif sibling.get('id') == 'excercise':
-                # exercise entry
-                extract_exercise(sibling)
+            elif sibling.get('id') == 'excercise':  # spelling mistake on purpose it's in the html as well
+                # exercise entry ignore for now
+                pass
             elif sibling.get('id') == 'food':
                 # food_entry
-                x = extract_food(sibling, current_date)
+                x = self.extract_food(sibling, current_date)
                 data.extend(x)
-                logging.debug(str(x))
+            elif sibling.get('class') == ['notes']:
+                # we ignore notes for now
+                pass
             else:
                 logging.warning('Unexpected tag %s', str(sibling))
 
-        return data
+        return data, None

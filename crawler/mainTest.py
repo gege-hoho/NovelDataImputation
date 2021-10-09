@@ -13,6 +13,8 @@ import json
 from collections import deque
 import datetime
 from databaseConnector import databaseConnector
+from translate import Translator
+
 
 # read the secrets from file
 
@@ -29,6 +31,10 @@ logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
 f = open("secret.json", 'r')
 secret_config = json.loads(f.read())
 y = crawler.MyFitnessPalCrawler(secret_config["email"], secret_config["password"])
+to_date = datetime.date(2020, 5, 14)
+from_date = to_date - datetime.timedelta(days=365)
+z,_ = y.crawl_diary('clemrn73', from_date, to_date)
+#datetime.date(2020,2,6) min datetime.date(2019,1,1)
 
 db = databaseConnector.SqliteConnector('databaseConnector/mfp.db')
 z = db.get_meal_item('test2')
