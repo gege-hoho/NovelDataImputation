@@ -13,7 +13,7 @@ insert_into_meal_item = "insert into meal_item (name, quick_add, calories, carbs
                         "cholest, sodium, sugars, fiber) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 insert_into_meal_history = "insert into meal_history (user, meal_item, date, meal) values (?, ?, ?, ?)"
-
+select_count_from_meal_history = "select count(*) from meal_history where user = ?"
 database_date_time_format = '%d-%m-%y %H:%M:%S'
 database_date_format = '%d-%m-%y'
 
@@ -31,6 +31,10 @@ class User:
         self.friends_crawl_time = datetime.strptime(user_data[6], database_date_time_format) if user_data[6] else None
         self.profile_crawl_time = datetime.strptime(user_data[7], database_date_time_format) if user_data[7] else None
         self.has_public_diary = user_data[8]
+
+    def __eq__(self, other):
+        if isinstance(other, User):
+            return self.id == other.id and self.username == other.username
 
 
 class MealItem:
@@ -136,6 +140,20 @@ class SqliteConnector:
         self.con.execute(insert_into_meal_item, user_data).close()
         self.con.commit()
         return self.get_meal_item(name)
+
+    def get_number_meal_items_from_user(self, user):
+        """
+
+        :param user:
+        :type user: User
+        :return: number of meal items already in DB for given user
+        :rtype: int
+        """
+        cur = self.con.cursor()
+        cur.execute(select_count_from_meal_history, (user.id,))
+        (res,) = cur.fetchone()
+        cur.close()
+        return res
 
     def get_meal_item(self, name):
         """

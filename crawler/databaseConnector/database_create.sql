@@ -41,8 +41,6 @@ create table meal_history
     meal_item integer not null
         references meal_item,
     date      text    not null,
-    meal      text    not null,
-    constraint user_meal_item_pk
-        primary key (user, meal_item)
+    meal      text    not null
 );
 
