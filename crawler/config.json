@@ -1,5 +1,6 @@
 {
   "database-path": "databaseConnector/mfp.db",
+  "initial-users": ["Theo166","clemrn73"],
   "mode": "diaries",
   "sleep-time": 2
 }

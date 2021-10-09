@@ -51,7 +51,10 @@ def check_config_integrity(config):
         raise Exception("no database-path defined")
     if not type(config['database-path']) is str:
         raise Exception(f"database-path has to be an str")
-
+    if not config['initial-users']:
+        raise Exception("no initial-users' defined")
+    if not type(config['initial-users']) is list:
+        raise Exception(f"database-path has to be an list")
 
 def check_secret_config_integrity(config):
     """
@@ -73,6 +76,9 @@ def main():
     timer = Timer()
     crawler = MyFitnessPalCrawler(secret_config["email"], secret_config["password"])
     db = SqliteConnector(config["database-path"])
+    #initialise users
+    db.create_users(config["initial-users"])
+
     mode = config['mode']
     logging.info("Starting with mode %s", mode)
     users_with_problems = []
