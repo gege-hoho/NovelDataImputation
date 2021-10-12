@@ -3,5 +3,6 @@
   "initial-users": ["Theo166","clemrn73"],
   "mode": "friends",
   "friend-page-limit": 100,
-  "sleep-time": 2
+  "sleep-time": 2,
+  "log-level": "DEBUG"
 }

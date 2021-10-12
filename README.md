@@ -6,3 +6,4 @@
 * `database-path`: path to the sqllite database file
 * `initial-users`: list of usernames which will be added to the db at start
 * `friend-page-limit`: max number of friend pages requested for one profile
+* `log-level`: one of python logging log levels e.g. INFO or DEBUG

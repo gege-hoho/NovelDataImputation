@@ -6,7 +6,8 @@ Created on Fri Oct  1 15:35:39 2021
 @author: gregor
 """
 import logging
-from timer import Timer
+from helper.timer import Timer
+from helper.configIntegrityChecker import ConfigIntegrityChecker
 from mfpCrawler.crawler import MyFitnessPalCrawler
 import json
 from collections import deque
@@ -18,14 +19,6 @@ from databaseConnector.databaseConnector import SqliteConnector, database_date_f
 
 mode_friends = 'friends'
 mode_diaries = 'diaries'
-
-logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
-                    datefmt=database_date_time_format,
-                    handlers=[
-                        logging.FileHandler("../debug.log"),
-                        logging.StreamHandler()
-                    ],
-                    level=logging.INFO)
 
 
 def read_json(filename):
@@ -41,24 +34,15 @@ def check_config_integrity(config):
     :param config: config object
     :type config: dict
     """
-    if not config['mode'] in (mode_friends, mode_diaries):
-        raise Exception(f"mode {config['mode']} is not known")
-    if not config['sleep-time']:
-        raise Exception("no sleep-time defined")
-    if not type(config['sleep-time']) is int:
-        raise Exception(f"sleep-time has to be an int")
-    if not config['database-path']:
-        raise Exception("no database-path defined")
-    if not type(config['database-path']) is str:
-        raise Exception(f"database-path has to be an str")
-    if not config['initial-users']:
-        raise Exception("no initial-users' defined")
-    if not type(config['initial-users']) is list:
-        raise Exception(f"database-path has to be an list")
-    if not type(config['friend-page-limit']) is int:
-        raise Exception(f"friend-page-limit has to be an int")
-    if not config['friend-page-limit']:
-        raise Exception("no friend-page-limit defined")
+    c = ConfigIntegrityChecker(config)
+
+    c.check_int('sleep-time')
+    c.check_set('mode', (mode_friends, mode_diaries))
+    c.check_str('database-path')
+    c.check_list('initial-users')
+    c.check_int('friend-page-limit')
+    c.check_str('log-level')
+
 
 def check_secret_config_integrity(config):
     """
@@ -77,11 +61,20 @@ def main():
     config = read_json("config.json")
     check_config_integrity(config)
 
+    logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
+                        datefmt=database_date_time_format,
+                        handlers=[
+                            logging.FileHandler(
+                                "logs/" + datetime.datetime.now().strftime("%d-%m-%y_%H-%M") + ".log"),
+                            logging.StreamHandler()
+                        ],
+                        level=logging.getLevelName(config["log-level"]))
+
     timer = Timer()
     relogin_time = time.time()
     crawler = MyFitnessPalCrawler(secret_config["email"], secret_config["password"], config["friend-page-limit"])
     db = SqliteConnector(config["database-path"])
-    #initialise users
+    # initialise users
     db.create_users(config["initial-users"])
 
     mode = config['mode']
