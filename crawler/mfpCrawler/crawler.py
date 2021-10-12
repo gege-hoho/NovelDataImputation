@@ -68,7 +68,7 @@ def create_food_entry(date, meal, name, calories, carbs, fat, protein, cholest, 
 
 
 class MyFitnessPalCrawler:
-    def __init__(self, email, password, friend_page_limit):
+    def __init__(self, email, password, friend_page_limit = 100):
         self.session = requests.Session()
         self.translator = Translator(to_lang='en', from_lang='autodetect')
         self.translations = []
@@ -212,8 +212,9 @@ class MyFitnessPalCrawler:
 
         profile_soup = profile_soup.find("div", {'class': "col-2"}).find_all("h5")
         profile_text = [x.text for x in profile_soup]
-
+        profile_text = [x for x in profile_text if 'years old' not in x] # skip age if there
         if 2 <= len(profile_text) <= 3:
+
             if "Female" in profile_text:
                 user_data["gender"] = "f"
             elif "Male" in profile_text:

@@ -8,6 +8,13 @@ Created on Fri Oct  1 15:35:39 2021
 import logging
 import sys
 
+from pydrive2.auth import GoogleAuth
+from pydrive2.drive import GoogleDrive
+
+#gauth = GoogleAuth()
+#gauth.LocalWebserverAuth()
+#drive = GoogleDrive(gauth)
+
 from mfpCrawler import crawler
 import json
 from collections import deque
@@ -32,6 +39,7 @@ f = open("secret.json", 'r')
 secret_config = json.loads(f.read())
 y = crawler.MyFitnessPalCrawler(secret_config["email"], secret_config["password"])
 to_date = datetime.date(2020, 5, 14)
+x = y.crawl_profile('desertfoxcoffee')
 from_date = to_date - datetime.timedelta(days=365)
 z,_ = y.crawl_diary('clemrn73', from_date, to_date)
 #datetime.date(2020,2,6) min datetime.date(2019,1,1)
