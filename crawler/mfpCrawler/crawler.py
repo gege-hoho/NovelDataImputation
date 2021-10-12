@@ -68,14 +68,15 @@ def create_food_entry(date, meal, name, calories, carbs, fat, protein, cholest, 
 
 
 class MyFitnessPalCrawler:
-    def __init__(self, email, password):
+    def __init__(self, email, password, friend_page_limit):
         self.session = requests.Session()
         self.translator = Translator(to_lang='en', from_lang='autodetect')
         self.translations = []
-        self.friend_page_limit = 100
+        self.friend_page_limit = friend_page_limit
         # conatins the last request
         self.last_request = None
-        self.login(email, password)
+        self.data = (email, password)
+        self.login()
 
     def get(self, endpoint):
         r = self.session.get(endpoint, headers=headers)
@@ -88,7 +89,8 @@ class MyFitnessPalCrawler:
         return self.last_request
 
     # sets the self.session and tries to login
-    def login(self, email, password):
+    def login(self):
+        email, password = self.data
         soup = self.get(endpoints.login_endpoint)
         auth_token = soup.find(class_="form login LoginForm").find(attrs={"name": "authenticity_token"})["value"]
         payload = {"utf8": "✓",
@@ -97,7 +99,7 @@ class MyFitnessPalCrawler:
                    "password": password,
                    "remember_me": 1}
         soup = self.post(endpoints.login_endpoint, payload)
-        if soup.find(class_="sub-nav") and self.logged_in():
+        if soup.find(class_="sub-nav"):
             logging.info("%s logged in", email)
         else:
             logging.error("login failed for %s", email)
@@ -110,6 +112,8 @@ class MyFitnessPalCrawler:
         logged = '/account/logout' in links
         if not logged:
             logging.warning("it seems that  we aren't logged in anymore")
+            logging.info("Relogin")
+            self.login()
         return logged
 
     def extract_food(self, soup, date):
@@ -233,7 +237,7 @@ class MyFitnessPalCrawler:
         else:
             logging.warning("Profile info length mismatch. It should be between 2 and 3, but was %i", len(profile_text))
 
-        logging.debug("Sucessfulley crawled %s", str(user_data))
+        logging.debug("Sucessfulley crawled %s", username)
         return user_data
 
     def crawl_friends(self, username):
@@ -247,10 +251,8 @@ class MyFitnessPalCrawler:
             if no_friend:
                 if "friends list is viewable by friends only" in no_friend.text.strip():
                     logging.info("%s does not have their friend public", username)
-                    pass
                 elif "currently does not have any friends added" in no_friend.text.strip() and i == 1:
                     logging.info("%s does not have friends", username)
-                    pass
                 # no more friends we're done
                 break
             if i == self.friend_page_limit:

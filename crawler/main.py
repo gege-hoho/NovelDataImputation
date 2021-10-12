@@ -55,6 +55,10 @@ def check_config_integrity(config):
         raise Exception("no initial-users' defined")
     if not type(config['initial-users']) is list:
         raise Exception(f"database-path has to be an list")
+    if not type(config['friend-page-limit']) is int:
+        raise Exception(f"friend-page-limit has to be an int")
+    if not config['friend-page-limit']:
+        raise Exception("no friend-page-limit defined")
 
 def check_secret_config_integrity(config):
     """
@@ -74,7 +78,8 @@ def main():
     check_config_integrity(config)
 
     timer = Timer()
-    crawler = MyFitnessPalCrawler(secret_config["email"], secret_config["password"])
+    relogin_time = time.time()
+    crawler = MyFitnessPalCrawler(secret_config["email"], secret_config["password"], config["friend-page-limit"])
     db = SqliteConnector(config["database-path"])
     #initialise users
     db.create_users(config["initial-users"])
@@ -84,6 +89,10 @@ def main():
     users_with_problems = []
     queue = deque()
     while True:
+        if time.time() - relogin_time > 1800:
+            # relogin every half hour
+            crawler.login()
+            relogin_time = time.time()
         if len(queue) == 0:
             # no more users in queue get more from db
             uncrawled_users = []
@@ -111,11 +120,11 @@ def main():
 
             # crawl friends
             friends = crawler.crawl_friends(curr_user.username)
-
             curr_user.friends_crawl_time = datetime.datetime.now()
+            logging.info("crawled %i friends", len(friends))
             db.save_user(curr_user)
-
             db.create_users(friends)
+
         if mode == mode_diaries:
             max_date = datetime.date(2021, 10, 1)
             from_date = curr_user.joined_date
