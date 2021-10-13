@@ -81,24 +81,24 @@ class MyFitnessPalCrawler:
     def get(self, endpoint):
         r = self.session.get(endpoint, headers=headers)
         self.last_request = BeautifulSoup(r.text, 'html.parser')
-        return self.last_request
+        return self.last_request, r.status_code
 
     def post(self, endpoint, payload):
         r = self.session.post(endpoint, data=payload, headers=headers)
         self.last_request = BeautifulSoup(r.text, 'html.parser')
-        return self.last_request
+        return self.last_request, r.status_code
 
     # sets the self.session and tries to login
     def login(self):
         email, password = self.data
-        soup = self.get(endpoints.login_endpoint)
+        soup, _ = self.get(endpoints.login_endpoint)
         auth_token = soup.find(class_="form login LoginForm").find(attrs={"name": "authenticity_token"})["value"]
         payload = {"utf8": "✓",
                    "authenticity_token": auth_token,
                    "username": email,
                    "password": password,
                    "remember_me": 1}
-        soup = self.post(endpoints.login_endpoint, payload)
+        soup, _ = self.post(endpoints.login_endpoint, payload)
         if soup.find(class_="sub-nav"):
             logging.info("%s logged in", email)
         else:
@@ -198,7 +198,10 @@ class MyFitnessPalCrawler:
             "age": None
         }
         logging.info("Request profile of %s", username)
-        soup = self.get(endpoints.user_endpoint.format(username))
+        soup, code = self.get(endpoints.user_endpoint.format(username))
+        if code == 404:
+            # user page not found bye bye
+            return user_data
         self.logged_in()
         links = [x.get("href") for x in soup.find_all("a")]
         user_data["has_public_diary"] = (f"/food/diary/{username}" in links)
@@ -260,8 +263,12 @@ class MyFitnessPalCrawler:
         friends = []
         while True:
             i += 1
-            soup = self.get(endpoints.friends_endpoint.format(username, i))
+            soup, _ = self.get(endpoints.friends_endpoint.format(username, i))
             no_friend = soup.find("div", {"class": "no_friends"})
+            title = soup.find("h1", {"class": "main-title"})
+            if title and title.text == "Unknown User":
+                logging.info("User %s not known abort", username)
+                break
             if no_friend:
                 if "friends list is viewable by friends only" in no_friend.text.strip():
                     logging.info("%s does not have their friend public", username)
@@ -286,9 +293,9 @@ class MyFitnessPalCrawler:
                           from_date.strftime(date_format),
                           to_date.strftime(date_format))
 
-        soup = self.get(endpoints.diary_endpoint.format(username,
-                                                        from_date.strftime(date_format),
-                                                        to_date.strftime(date_format)))
+        soup, _ = self.get(endpoints.diary_endpoint.format(username,
+                                                           from_date.strftime(date_format),
+                                                           to_date.strftime(date_format)))
         title = soup.find('h1', {'class': 'main-title'})
         if title and title.text == 'Password Required':
             logging.info("Password required to enter diary")
