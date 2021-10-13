@@ -109,6 +109,7 @@ def main():
             curr_user.location = user_data['location']
             curr_user.has_public_diary = user_data['has_public_diary']
             curr_user.joined_date = user_data['joined']
+            curr_user.age = user_data['age']
             curr_user.profile_crawl_time = datetime.datetime.now()
 
             # crawl friends

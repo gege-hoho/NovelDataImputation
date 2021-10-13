@@ -4,9 +4,10 @@ import sqlite3
 insert_into_user = "insert into user (username) values (?)"
 select_uncrawled_friends_users = "select * from user where friends_crawl_time is NULL"
 select_uncrawled_diaries_users = "select * from user where has_public_diary = 1 and food_crawl_time is NULL"
+select_users_by_username = "select * from user where username = ?"
 update_user = "update user set gender = ?, location = ?, joined_date = ?," \
               "food_crawl_time = ?, friends_crawl_time = ?, profile_crawl_time = ?," \
-              "has_public_diary = ? where user = ?  "
+              "has_public_diary = ?, age = ? where user = ?  "
 does_user_exist = "select count(*) from user where username = ?"
 get_meal_item = "select * from meal_item where name = ? and quick_add = ?"
 insert_into_meal_item = "insert into meal_item (name, quick_add, calories, carbs, fat, protein, " \
@@ -20,7 +21,7 @@ database_date_format = '%d-%m-%y'
 
 class User:
     def __init__(self, user_data):
-        if len(user_data) != 9:
+        if len(user_data) != 10:
             raise Exception("length mismatch")
         self.id = user_data[0]
         self.username = user_data[1]
@@ -31,6 +32,7 @@ class User:
         self.friends_crawl_time = datetime.strptime(user_data[6], database_date_time_format) if user_data[6] else None
         self.profile_crawl_time = datetime.strptime(user_data[7], database_date_time_format) if user_data[7] else None
         self.has_public_diary = user_data[8]
+        self.age = user_data[9]
 
     def __eq__(self, other):
         if isinstance(other, User):
@@ -198,6 +200,20 @@ class SqliteConnector:
         cur.close()
         return result
 
+    def get_user_by_username(self, username):
+        """
+        Get users with a given username
+        :param username:
+        :type username: str
+        :return:
+        :rtype: list of User
+        """
+        cur = self.con.execute(select_users_by_username,(username,))
+        result = cur.fetchall()
+        result = [User(x) for x in result]
+        cur.close()
+        return result
+
     def save_user(self, user):
         """
         Saves everything except the key and the username because they should not be immutable
@@ -222,6 +238,6 @@ class SqliteConnector:
 
         user_data = (
             user.gender, user.location, joined_date, food_crawl_time,
-            friends_crawl_time, profile_crawl_time, user.has_public_diary, user.id)
+            friends_crawl_time, profile_crawl_time, user.has_public_diary, user.age, user.id)
         self.con.execute(update_user, user_data).close()
         self.con.commit()

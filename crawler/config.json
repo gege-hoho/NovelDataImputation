@@ -1,6 +1,6 @@
 {
   "database-path": "databaseConnector/mfp.db",
-  "initial-users": ["Theo166","clemrn73"],
+  "initial-users": ["Theo166","clemrn73","Crossfitdad71","gegehoho"],
   "mode": "friends",
   "friend-page-limit": 100,
   "sleep-time": 2,

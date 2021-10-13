@@ -68,7 +68,7 @@ def create_food_entry(date, meal, name, calories, carbs, fat, protein, cholest, 
 
 
 class MyFitnessPalCrawler:
-    def __init__(self, email, password, friend_page_limit = 100):
+    def __init__(self, email, password, friend_page_limit=100):
         self.session = requests.Session()
         self.translator = Translator(to_lang='en', from_lang='autodetect')
         self.translations = []
@@ -194,7 +194,8 @@ class MyFitnessPalCrawler:
             "has_public_diary": None,
             "gender": None,
             "joined": None,
-            "location": None
+            "location": None,
+            "age": None
         }
         logging.info("Request profile of %s", username)
         soup = self.get(endpoints.user_endpoint.format(username))
@@ -212,27 +213,39 @@ class MyFitnessPalCrawler:
 
         profile_soup = profile_soup.find("div", {'class': "col-2"}).find_all("h5")
         profile_text = [x.text for x in profile_soup]
-        profile_text = [x for x in profile_text if 'years old' not in x] # skip age if there
-        if 2 <= len(profile_text) <= 3:
+        # profile_text = [x for x in profile_text if 'years old' not in x] # skip age if there
 
-            if "Female" in profile_text:
-                user_data["gender"] = "f"
-            elif "Male" in profile_text:
-                user_data["gender"] = "m"
-            else:
-                logging.warning("Could not detect gender for %s", username)
-            joined_re = re.compile("Member\s*since\s*([a-zA-Z]*\s*[0-9]{1,2},\s*[0-9]{4})")
-            joined = re.findall(joined_re, profile_text[-1])
-            if len(joined) == 0:
-                logging.warning("Could not detect joined date")
-                joined = [""]
-            elif len(joined) > 1:
-                logging.warning("Found more than expected joined date: %s", " ".join(joined))
-            user_data["joined"] = datetime.datetime.strptime(joined[0], '%B %d, %Y').date()
+        if 2 <= len(profile_text) <= 4:
+            for index, text in enumerate(profile_text):
+                age_re = re.compile("(\d\d) years old")
+                age = re.findall(age_re, text)
 
-            # this means that a location is public
-            if len(profile_text) == 3:
-                user_data["location"] = profile_text[1]
+                joined_re = re.compile("Member\s*since\s*([a-zA-Z]*\s*[0-9]{1,2},\s*[0-9]{4})")
+                joined = re.findall(joined_re, text)
+
+                location_re = re.compile("(.*, [A-Z][A-Z])")
+                location = re.findall(location_re, text)
+
+                if age:
+                    if len(age) != 1:
+                        logging.warning("Could not detect single age")
+                        continue
+                    user_data["age"] = age[0]
+                elif text in ("Male", "Female"):
+                    if "Female" in text:
+                        user_data["gender"] = "f"
+                    elif "Male" in text:
+                        user_data["gender"] = "m"
+                elif joined:
+                    if len(joined) != 1:
+                        logging.warning("Could not detect single joined date")
+                        continue
+                    user_data["joined"] = datetime.datetime.strptime(joined[0], '%B %d, %Y').date()
+                elif location:
+                    if len(location) != 1:
+                        logging.warning("Could not detect single location")
+                    user_data["location"] = text
+
         elif len(profile_text) == 0 and soup.find("div", {"id": "profile-private"}):
             logging.info("Profile is private")
         else:

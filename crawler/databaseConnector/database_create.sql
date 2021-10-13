@@ -9,7 +9,8 @@ create table user
     food_crawl_time    TEXT,
     friends_crawl_time TEXT,
     profile_crawl_time TEXT,
-    has_public_diary   int
+    has_public_diary   int,
+    age                int
 );
 
 create unique index user_username_uindex
