@@ -15,8 +15,13 @@ insert_into_meal_item = "insert into meal_item (name, quick_add, calories, carbs
 
 insert_into_meal_history = "insert into meal_history (user, meal_item, date, meal) values (?, ?, ?, ?)"
 select_count_from_meal_history = "select count(*) from meal_history where user = ?"
+select_count_user = "select count(*) from user"
+select_count_user_profile_crawled = "select count(*) from user where profile_crawl_time is not null"
+select_count_user_public_diary = "select count(*) from user where has_public_diary = 1"
+
 database_date_time_format = '%d-%m-%y %H:%M:%S'
 database_date_format = '%d-%m-%y'
+
 
 
 class User:
@@ -142,6 +147,26 @@ class SqliteConnector:
         self.con.execute(insert_into_meal_item, user_data).close()
         self.con.commit()
         return self.get_meal_item(name)
+
+    def get_user_statistics(self):
+        """
+        Gives statistics over the user table
+        :return:
+        :rtype:
+        """
+        cur = self.con.cursor()
+        cur.execute(select_count_user)
+        (count_user,) = cur.fetchone()
+        cur.execute(select_count_user_profile_crawled)
+        (count_profile_crawled,) = cur.fetchone()
+        cur.execute(select_count_user_public_diary)
+        (count_public_diary,) = cur.fetchone()
+        cur.close()
+        return {
+            "total": count_user,
+            "profile-crawled": count_profile_crawled,
+            "public-diary": count_public_diary
+        }
 
     def get_number_meal_items_from_user(self, user):
         """

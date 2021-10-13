@@ -36,6 +36,13 @@ logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                     ],
                     level=logging.DEBUG)
 f = open("secret.json", 'r')
+
+db = databaseConnector.SqliteConnector('databaseConnector/mfp.db')
+x = db.get_user_statistics()
+statistics = db.get_user_statistics()
+logging.info("Statistics: Found User: %i, Crawled Profiles: %i, Public Diaries: %i, Rate %.2f",
+             statistics['total'], statistics['profile-crawled'], statistics['public-diary'],
+             statistics['public-diary'] / statistics['profile-crawled'])
 secret_config = json.loads(f.read())
 y = crawler.MyFitnessPalCrawler(secret_config["email"], secret_config["password"])
 to_date = datetime.date(2020, 5, 14)
@@ -49,7 +56,7 @@ from_date = to_date - datetime.timedelta(days=365)
 z,_ = y.crawl_diary('clemrn73', from_date, to_date)
 #datetime.date(2020,2,6) min datetime.date(2019,1,1)
 
-db = databaseConnector.SqliteConnector('databaseConnector/mfp.db')
+
 z = db.get_meal_item('test2')
 x = db.get_uncrawled_friends_users()
 

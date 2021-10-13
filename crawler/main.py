@@ -81,10 +81,17 @@ def main():
     logging.info("Starting with mode %s", mode)
     users_with_problems = []
     queue = deque()
+    i = 0
     while True:
         if time.time() - relogin_time > 1800:
             # relogin every half hour
             crawler.login()
+
+            # print statistics:
+            statistics = db.get_user_statistics()
+            logging.info("Statistics: Found User: %i, Crawled Profiles: %i, Public Diaries: %i, Rate %.2f",
+                         statistics['total'], statistics['profile-crawled'], statistics['public-diary'],
+                         statistics['public-diary']/statistics['profile-crawled'] )
             relogin_time = time.time()
         if len(queue) == 0:
             # no more users in queue get more from db
