@@ -114,19 +114,17 @@ class Main:
         curr_user.age = user_data['age']
         curr_user.profile_crawl_time = datetime.datetime.now()
         self.db.save_user(curr_user)
-        return curr_user, 0
+        return curr_user
 
     def crawl_friends(self, curr_user):
-        curr_user, ret = self.crawl_profile(curr_user)
-        if ret < 0:
-            return curr_user, ret
+        curr_user = self.crawl_profile(curr_user)
         # crawl friends
         friends = self.crawler.crawl_friends(curr_user.username)
         curr_user.friends_crawl_time = datetime.datetime.now()
         logging.info("crawled %i friends", len(friends))
         self.db.save_user(curr_user)
         self.db.create_users(friends)
-        return curr_user, 0
+        return curr_user
 
     def crawl_diary(self, curr_user):
         max_date = datetime.date(2021, 10, 1)
@@ -141,7 +139,7 @@ class Main:
         if number_of_saved_meal_items > 0:
             logging.warning("There is already a meal history for the user,... skipping")
             self.users_with_problems.append(curr_user)
-            return curr_user, -1
+            return curr_user
         while from_date < max_date:
             logging.info("crawl between %s, %s", from_date.strftime(database_date_format),
                          to_date.strftime(database_date_format))
@@ -163,7 +161,7 @@ class Main:
                              from_date.strftime(database_date_format),
                              min_date.strftime(database_date_format))
                 diary_2, ret = self.crawler.crawl_diary(curr_user.username, from_date, min_date)
-                logging.info("found additional %i entries", len(diary_2))
+                logging.info("found additional %i entries", len(diary_2)-(1000-diary))
                 diary = diary_2 + diary
                 if len(diary_2) == 1000:
                     # no implementation so far if the addition also expand over the limit.
@@ -174,7 +172,7 @@ class Main:
 
             self.timer.tick()
             for diary_entry in diary:
-                item = self.db.get_meal_item(diary_entry['item']['name'])
+                item = self.db.get_meal_item(diary_entry['item'])
                 if not item:
                     item = self.db.create_meal_item(diary_entry['item'])
                 self.db.create_meal_history(curr_user.id, item.id, diary_entry['date'], diary_entry['meal'])
@@ -191,7 +189,7 @@ class Main:
 
         curr_user.food_crawl_time = datetime.datetime.now()
         self.db.save_user(curr_user)
-        return curr_user, 0
+        return curr_user
 
     def main(self):
         relogin_time = time.time()
@@ -215,12 +213,10 @@ class Main:
             logging.info("Crawling %s", curr_user.username)
             if self.mode == mode_friends:
                 self.log_statistics()
-                curr_user, _ = self.crawl_friends(curr_user)
+                curr_user = self.crawl_friends(curr_user)
 
             if self.mode == mode_diaries:
-                curr_user, ret = self.crawl_diary(curr_user)
-                if ret == -1:
-                    continue
+                curr_user = self.crawl_diary(curr_user)
 
 
 if __name__ == '__main__':

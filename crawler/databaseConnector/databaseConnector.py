@@ -71,6 +71,28 @@ class MealHistory:
         self.meal = meal_history_data[3]
 
 
+def _translate_quick_add(data):
+    """
+    Translates From food item data to database
+    and removes the Quick Add name to make name unique in database
+    :param data: data as from crawler.extract_food
+    :type data: dict
+    :return: Tuple of quick_add(0,1) and name
+    :rtype: (int,str)
+    """
+    quick_add = 0
+    name = data['name']
+    if "Quick Add - MyFitnessPal Premium" in data['name']:
+        quick_add = 1
+        name = "Quick Add"
+        for key, x in data.items():
+            if key == 'name':
+                continue
+            x = x if x is not None else "-"
+            name += f" {x}"
+    return quick_add, name
+
+
 class SqliteConnector:
     def __init__(self, db_name):
         """
@@ -81,6 +103,15 @@ class SqliteConnector:
         self.con = sqlite3.connect(db_name)
 
     def exists_user(self, username, cur_cursor=None):
+        """
+        Checks if a username already exists in the database
+        :param username:
+        :type username: str
+        :param cur_cursor: additional cursor to be used
+        :type cur_cursor:
+        :return:
+        :rtype: bool
+        """
         cur_created = False
         if not cur_cursor:
             cur_cursor = self.con.cursor()
@@ -127,26 +158,17 @@ class SqliteConnector:
     def create_meal_item(self, data):
         """
         Creates an meal item in the database
-        :param data:
-        :type data:
+        :param data: as from crawler.extract_food
+        :type data: dict
         """
-        quick_add = 0
-        name = data['name']
         # handle the MFP Quick Add functionality bc, the name has to be unique
-        if "Quick Add - MyFitnessPal Premium" in data['name']:
-            quick_add = 1
-            name = "Quick Add"
-            for key, x in data.items():
-                if key == 'name':
-                    continue
-                x = x if x else "-"
-                name += f" {x}"
+        quick_add, name = _translate_quick_add(data)
         user_data = (name, quick_add, data['calories'],
                      data['carbs'], data['fat'], data['protein'],
                      data['cholest'], data['sodium'], data['sugars'], data['fiber'])
         self.con.execute(insert_into_meal_item, user_data).close()
         self.con.commit()
-        return self.get_meal_item(name)
+        return self.get_meal_item(data)
 
     def get_user_statistics(self):
         """
@@ -182,18 +204,16 @@ class SqliteConnector:
         cur.close()
         return res
 
-    def get_meal_item(self, name):
+    def get_meal_item(self, data):
         """
-        Gets a meal item by name if exists none otherwise
-        :param name:
-        :type name: str
+        Gets a meal item if exists none otherwise
+        :param data: data: as from crawler.extract_food
+        :type data: dict
         :return:
         :rtype: MealItem
         """
         cur = self.con.cursor()
-        quick_add = 0
-        if "Quick Add - MyFitnessPal Premium" in name:
-            quick_add = 1
+        quick_add, name = _translate_quick_add(data)
         cur.execute(get_meal_item, (name, quick_add))
         res = cur.fetchone()
         cur.close()

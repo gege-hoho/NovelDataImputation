@@ -55,6 +55,9 @@ Oct 15:
 -Implemented timeout logic
 -Fix some bugs in Diary Crawling
 
+Known Problems:
+user CSARdiver has over 1000 entries for recrawl
+
 Links:
 https://platinmods.com/threads/how-to-fix-apktool-decompile-error-using-mt-manager-app-arscdecoder-error.121708/
 
