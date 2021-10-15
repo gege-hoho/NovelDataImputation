@@ -161,7 +161,7 @@ class Main:
                              from_date.strftime(database_date_format),
                              min_date.strftime(database_date_format))
                 diary_2, ret = self.crawler.crawl_diary(curr_user.username, from_date, min_date)
-                logging.info("found additional %i entries", len(diary_2)-(1000-diary))
+                logging.info("found additional %i entries", len(diary_2)-(1000-len(diary)))
                 diary = diary_2 + diary
                 if len(diary_2) == 1000:
                     # no implementation so far if the addition also expand over the limit.
