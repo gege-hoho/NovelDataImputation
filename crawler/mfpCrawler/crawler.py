@@ -68,7 +68,9 @@ def create_food_entry(date, meal, name, calories, carbs, fat, protein, cholest, 
 
 
 class MyFitnessPalCrawler:
-    def __init__(self, email, password, friend_page_limit=100):
+    def __init__(self, email, password, friend_page_limit=100, timeout=5, max_retries=5):
+        self.max_retries = 5
+        self.timeout = timeout
         self.session = requests.Session()
         self.translator = Translator(to_lang='en', from_lang='autodetect')
         self.translations = []
@@ -79,14 +81,29 @@ class MyFitnessPalCrawler:
         self.login()
 
     def get(self, endpoint):
-        r = self.session.get(endpoint, headers=headers)
-        self.last_request = BeautifulSoup(r.text, 'html.parser')
-        return self.last_request, r.status_code
+        i = 0
+        while i < self.max_retries:
+            try:
+                r = self.session.get(endpoint, headers=headers, timeout=self.timeout)
+                self.last_request = BeautifulSoup(r.text, 'html.parser')
+                return self.last_request, r.status_code
+            except TimeoutError as t:
+                i += 1
+                if i == self.max_retries:
+                    raise t
 
     def post(self, endpoint, payload):
-        r = self.session.post(endpoint, data=payload, headers=headers)
-        self.last_request = BeautifulSoup(r.text, 'html.parser')
-        return self.last_request, r.status_code
+        i = 0
+        r = None
+        while i < self.max_retries:
+            try:
+                r = self.session.post(endpoint, data=payload, headers=headers, timeout=self.timeout)
+                self.last_request = BeautifulSoup(r.text, 'html.parser')
+                return self.last_request, r.status_code
+            except TimeoutError as t:
+                i += 1
+                if i == self.max_retries:
+                    raise t
 
     # sets the self.session and tries to login
     def login(self):
@@ -150,10 +167,10 @@ class MyFitnessPalCrawler:
         Formats the string and converts it to one of the meal types
         :param meal: str
         :type meal:
-        :return: meal type (b,l,d,s,u)
+        :return: meal type
         :rtype: str
         """
-        meal_types = ['breakfast', 'lunch', 'dinner', 'snacks']
+        meal_types = ['breakfast', 'lunch', 'dinner', 'snacks','dessert']
         meal_string = meal.strip().replace("\n", "").lower()
 
         match = re.compile("meal ([0-9])").match(meal_string)
@@ -162,6 +179,7 @@ class MyFitnessPalCrawler:
         if meal_string in meal_types:
             return meal_string
 
+        #check if we already entcountered this meal_string
         translation = next((b for (a, b) in self.translations if a == meal_string), None)
         if translation:
             return translation
@@ -177,8 +195,9 @@ class MyFitnessPalCrawler:
             self.translations.append((meal_string, translation))
             return translation
 
+        self.translations.append((meal_string, translation))
         logging.info("couldn't match %s", meal_string)
-        return 'unknown'
+        return translation
 
     def crawl_profile(self, username):
         """

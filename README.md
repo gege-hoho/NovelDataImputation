@@ -7,3 +7,5 @@
 * `initial-users`: list of usernames which will be added to the db at start
 * `friend-page-limit`: max number of friend pages requested for one profile
 * `log-level`: one of python logging log levels e.g. INFO or DEBUG
+* `crawler-timeout`: maximum wait time in seconds for a request made by the crawler
+* `crawler-max-retries`: maximum time of retrying if a request timeout before exiting

@@ -40,6 +40,21 @@ Oct 9:
 -Handle password protected diaries
 -Handle diaries with more than 1000 entries
 
+Oct 12:
+-Improved logging
+-First steps to database backups
+-refactoring of the config system
+
+Oct 13:
+-Improvments to the friends crawler(Handling of deleted users)
+-Profiles with an given age are now crawled correctly
+-Added statistics
+
+Oct 15:
+-Restructured the main.py
+-Implemented timeout logic
+-Fix some bugs in Diary Crawling
+
 Links:
 https://platinmods.com/threads/how-to-fix-apktool-decompile-error-using-mt-manager-app-arscdecoder-error.121708/
 

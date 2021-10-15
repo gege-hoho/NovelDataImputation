@@ -21,7 +21,19 @@ from collections import deque
 import datetime
 from databaseConnector import databaseConnector
 from translate import Translator
+import requests
 
+max_retries = 5
+i = 0
+while i < 5:
+    try:
+        raise TimeoutError #r = requests.get('http://10.255.255.1',timeout=1)
+        break
+    except TimeoutError as t:
+        i += 1
+        print(f"{i} try")
+        if i == 5:
+            raise t
 
 # read the secrets from file
 
@@ -46,7 +58,7 @@ logging.info("Statistics: Found User: %i, Crawled Profiles: %i, Public Diaries: 
 secret_config = json.loads(f.read())
 y = crawler.MyFitnessPalCrawler(secret_config["email"], secret_config["password"])
 to_date = datetime.date(2020, 5, 14)
-x = y.crawl_friends('rynshermy')
+x = y.crawl_profile('TriedEverything')
 print(x)
 x = y.crawl_profile('Crossfitdad71')
 print(x)

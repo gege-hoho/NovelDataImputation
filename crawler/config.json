@@ -1,8 +1,10 @@
 {
   "database-path": "databaseConnector/mfp.db",
   "initial-users": ["Theo166","clemrn73","Crossfitdad71","gegehoho"],
-  "mode": "friends",
+  "mode": "diaries",
   "friend-page-limit": 100,
   "sleep-time": 2,
-  "log-level": "DEBUG"
+  "log-level": "DEBUG",
+  "crawler-timeout": 10,
+  "crawler-max-retries": 5
 }
