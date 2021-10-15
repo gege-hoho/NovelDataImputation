@@ -54,9 +54,16 @@ Oct 15:
 -Restructured the main.py
 -Implemented timeout logic
 -Fix some bugs in Diary Crawling
+-Implemented test mode for diaries
+-Implemented solution for Diaries which are longer than 1000
 
 Known Problems:
 user CSARdiver has over 1000 entries for recrawl
+
+Todo:
+build different log level for file and print
+check if diarycrawler duplicates entries at the date borders?
+check what happens if you enter the same meal history twice? does it break
 
 Links:
 https://platinmods.com/threads/how-to-fix-apktool-decompile-error-using-mt-manager-app-arscdecoder-error.121708/

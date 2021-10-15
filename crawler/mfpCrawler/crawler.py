@@ -8,6 +8,7 @@ Created on Wed Sep  8 08:49:48 2021
 
 import requests
 from translate import Translator
+from langdetect import detect
 import datetime
 from bs4 import BeautifulSoup, element
 import logging
@@ -72,7 +73,6 @@ class MyFitnessPalCrawler:
         self.max_retries = 5
         self.timeout = timeout
         self.session = requests.Session()
-        self.translator = Translator(to_lang='en', from_lang='autodetect')
         self.translations = []
         self.friend_page_limit = friend_page_limit
         # conatins the last request
@@ -89,6 +89,7 @@ class MyFitnessPalCrawler:
                 return self.last_request, r.status_code
             except TimeoutError as t:
                 i += 1
+                logging.warning("Timeout during request at %s retry %i out of %i", endpoint, i, self.max_retries)
                 if i == self.max_retries:
                     raise t
 
@@ -102,6 +103,7 @@ class MyFitnessPalCrawler:
                 return self.last_request, r.status_code
             except TimeoutError as t:
                 i += 1
+                logging.warning("Timeout during request at %s retry %i out of %i", endpoint, i, self.max_retries)
                 if i == self.max_retries:
                     raise t
 
@@ -184,7 +186,9 @@ class MyFitnessPalCrawler:
         if translation:
             return translation
 
-        translation = self.translator.translate(meal_string)
+        translator = Translator(to_lang='en', from_lang=detect(meal_string))
+        translation = translator.translate(meal_string)
+
         translation = translation.strip().replace("\n", "").lower()
         logging.info("Translated %s to %s", meal_string, translation)
         if translation == 'snack':
@@ -194,8 +198,8 @@ class MyFitnessPalCrawler:
             logging.debug("added %s %s to translation", meal_string, translation)
             self.translations.append((meal_string, translation))
             return translation
-
-        self.translations.append((meal_string, translation))
+        # we couldn't match the translated meal_string. Therefore we throw away the translation and save it as is
+        self.translations.append((meal_string, meal_string))
         logging.info("couldn't match %s", meal_string)
         return translation
 

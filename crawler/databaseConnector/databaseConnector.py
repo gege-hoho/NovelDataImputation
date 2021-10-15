@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 import sqlite3
 
@@ -19,9 +20,10 @@ select_count_user = "select count(*) from user"
 select_count_user_profile_crawled = "select count(*) from user where profile_crawl_time is not null"
 select_count_user_public_diary = "select count(*) from user where has_public_diary = 1"
 
+delete_meal_history_by_user = "delete from meal_history where user = ?"
+
 database_date_time_format = '%d-%m-%y %H:%M:%S'
 database_date_format = '%d-%m-%y'
-
 
 
 class User:
@@ -136,10 +138,14 @@ class SqliteConnector:
         :type meal: str
         """
         date = date.strftime(database_date_format)
-        cur = self.con.cursor()
-        cur.execute(insert_into_meal_history, (user_id, meal_item_id, date, meal))
-        cur.close()
-        self.con.commit()
+        try:
+            cur = self.con.cursor()
+            cur.execute(insert_into_meal_history, (user_id, meal_item_id, date, meal))
+            cur.close()
+            self.con.commit()
+        except sqlite3.IntegrityError as e:
+            logging.error("Meal history %i, %i,%s, %s already exists", user_id, meal_item_id, date, meal)
+            raise e
 
     def create_users(self, usernames):
         """
@@ -251,11 +257,11 @@ class SqliteConnector:
         :param username:
         :type username: str
         :return:
-        :rtype: list of User
+        :rtype: User
         """
-        cur = self.con.execute(select_users_by_username,(username,))
-        result = cur.fetchall()
-        result = [User(x) for x in result]
+        cur = self.con.execute(select_users_by_username, (username,))
+        result = cur.fetchone()
+        result = User(result)
         cur.close()
         return result
 
@@ -285,4 +291,14 @@ class SqliteConnector:
             user.gender, user.location, joined_date, food_crawl_time,
             friends_crawl_time, profile_crawl_time, user.has_public_diary, user.age, user.id)
         self.con.execute(update_user, user_data).close()
+        self.con.commit()
+
+    def delete_meal_history_for_user(self, user):
+        """
+
+        :param user: user for which meal history should be deleted
+        :type user: User
+        """
+        logging.warning("Delete meal history for %s", user.username)
+        self.con.execute(delete_meal_history_by_user, (user.id,)).close()
         self.con.commit()

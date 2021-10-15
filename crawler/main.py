@@ -19,6 +19,7 @@ from databaseConnector.databaseConnector import SqliteConnector, database_date_f
 
 mode_friends = 'friends'
 mode_diaries = 'diaries'
+mode_diaries_test = 'diaries-test'
 
 
 def check_config_integrity(config):
@@ -30,7 +31,7 @@ def check_config_integrity(config):
     c = ConfigIntegrityChecker(config)
 
     c.check_int('sleep-time')
-    c.check_set('mode', (mode_friends, mode_diaries))
+    c.check_set('mode', (mode_friends, mode_diaries, mode_diaries_test))
     c.check_str('database-path')
     c.check_list('initial-users')
     c.check_int('friend-page-limit')
@@ -76,13 +77,16 @@ class Main:
                                            config["friend-page-limit"], config['crawler-timeout'],
                                            config["crawler-max-retries"])
         self.db = SqliteConnector(config["database-path"])
-        # initialise users
-        self.db.create_users(config["initial-users"])
-        self.mode = config['mode']
 
+        self.mode = config['mode']
+        self.test_users = []
         self.sleep_time = config['sleep-time']
         self.timer = Timer()
         self.users_with_problems = []
+        # initialise users if not exists
+        self.db.create_users(config["initial-users"])
+        if self.mode == mode_diaries_test:
+            self.test_users = [self.db.get_user_by_username(x) for x in config["initial-users"]]
 
     def re_login(self):
         self.crawler.login()
@@ -100,6 +104,8 @@ class Main:
             uncrawled_users = self.db.get_uncrawled_friends_users()
         if self.mode == mode_diaries:
             uncrawled_users = self.db.get_uncrawled_diaries_users()
+        if self.mode == mode_diaries_test:
+            uncrawled_users = self.test_users
         # filter all users with problems out
         uncrawled_users = [x for x in uncrawled_users if x not in self.users_with_problems]
         return uncrawled_users
@@ -127,12 +133,20 @@ class Main:
         return curr_user
 
     def crawl_diary(self, curr_user):
+        """
         max_date = datetime.date(2021, 10, 1)
         from_date = curr_user.joined_date
         if not from_date:
             logging.info("%s has no joined date, last 5 years are crawled", curr_user.username)
             from_date = max_date - datetime.timedelta(days=365 * 5)
         to_date = from_date + datetime.timedelta(days=365)
+        """
+        to_date = datetime.date(2021, 10, 1)
+        from_date = to_date - datetime.timedelta(days=365)
+        cutoff_date = curr_user.joined_date
+        if cutoff_date is None:
+            logging.info("%s has no joined date, last 5 years are crawled", curr_user.username)
+            cutoff_date = to_date - datetime.timedelta(days=365 * 5)
 
         # check if there is already something for the user
         number_of_saved_meal_items = self.db.get_number_meal_items_from_user(curr_user)
@@ -140,36 +154,34 @@ class Main:
             logging.warning("There is already a meal history for the user,... skipping")
             self.users_with_problems.append(curr_user)
             return curr_user
-        while from_date < max_date:
+        while to_date > cutoff_date:
             logging.info("crawl between %s, %s", from_date.strftime(database_date_format),
                          to_date.strftime(database_date_format))
             diary, ret = self.crawler.crawl_diary(curr_user.username, from_date, to_date)
             if ret == 'password':
                 # password is required skip
                 break
+            # update time
             if len(diary) == 1000:
                 # only 1000 elements get crawled. After that it gets cut of at the front of the list
                 # therefore if its 1000 elements crawl again from the from_date to the last crawled date
                 # there is the possibility that the earliest date is not 100% complete therefore remove it and
-                # crawl it again
-
-                time.sleep(self.sleep_time)
-                min_date = min(diary, key=lambda p: p['date'])['date']
-                # first day was maybe not crawled 100%. Therefore remove it and crawl it again in the next step
-                diary = [d for d in diary if d['date'] != min_date]
-                logging.info("over 1000 diary entries, recrawl between %s and %s",
+                # crawl it again in the next step
+                min_diary_date = min(diary, key=lambda p: p['date'])['date']
+                logging.info("found over 1000 diary entries for this period, recrawl between %s and %s",
                              from_date.strftime(database_date_format),
-                             min_date.strftime(database_date_format))
-                diary_2, ret = self.crawler.crawl_diary(curr_user.username, from_date, min_date)
-                logging.info("found additional %i entries", len(diary_2)-(1000-len(diary)))
-                diary = diary_2 + diary
-                if len(diary_2) == 1000:
-                    # no implementation so far if the addition also expand over the limit.
-                    raise Exception("Not implemented for such long diaries")
+                             min_diary_date.strftime(database_date_format))
+                # first day was maybe not crawled 100%. Therefore remove it and crawl it again in the next step
+                diary = [d for d in diary if d['date'] != min_diary_date]
+                to_date = min_diary_date
+            else:
+                to_date = from_date - datetime.timedelta(days=1)
+                from_date = to_date - datetime.timedelta(days=365)
+                if from_date < cutoff_date:
+                    from_date = cutoff_date
 
             # put in database
-            logging.info("crawled %i diary entries of %s", len(diary), curr_user.username)
-
+            logging.info("insert %i diary entries of %s in database", len(diary), curr_user.username)
             self.timer.tick()
             for diary_entry in diary:
                 item = self.db.get_meal_item(diary_entry['item'])
@@ -180,12 +192,6 @@ class Main:
 
             if self.sleep_time - delta > 0:
                 time.sleep(self.sleep_time - delta)
-
-            # update time
-            from_date = to_date
-            to_date = from_date + datetime.timedelta(days=365)
-            if to_date > max_date:
-                to_date = max_date
 
         curr_user.food_crawl_time = datetime.datetime.now()
         self.db.save_user(curr_user)
@@ -216,6 +222,13 @@ class Main:
                 curr_user = self.crawl_friends(curr_user)
 
             if self.mode == mode_diaries:
+                curr_user = self.crawl_diary(curr_user)
+            if self.mode == mode_diaries_test:
+                # delete old diary entry
+                self.db.delete_meal_history_for_user(curr_user)
+                curr_user.food_crawl_time = None
+                self.db.save_user(curr_user)
+                # crawl new diary
                 curr_user = self.crawl_diary(curr_user)
 
 

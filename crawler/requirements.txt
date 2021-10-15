@@ -1,3 +1,4 @@
 translate
 beautifulsoup4
 pydrive2
+langdetect
