@@ -7,6 +7,7 @@ Created on Wed Sep  8 08:49:48 2021
 """
 
 import requests
+from requests.exceptions import Timeout
 from translate import Translator
 from langdetect import detect
 import datetime
@@ -87,7 +88,7 @@ class MyFitnessPalCrawler:
                 r = self.session.get(endpoint, headers=headers, timeout=self.timeout)
                 self.last_request = BeautifulSoup(r.text, 'html.parser')
                 return self.last_request, r.status_code
-            except TimeoutError as t:
+            except Timeout as t:
                 i += 1
                 logging.warning("Timeout during request at %s retry %i out of %i", endpoint, i, self.max_retries)
                 if i == self.max_retries:
@@ -101,7 +102,7 @@ class MyFitnessPalCrawler:
                 r = self.session.post(endpoint, data=payload, headers=headers, timeout=self.timeout)
                 self.last_request = BeautifulSoup(r.text, 'html.parser')
                 return self.last_request, r.status_code
-            except TimeoutError as t:
+            except Timeout as t:
                 i += 1
                 logging.warning("Timeout during request at %s retry %i out of %i", endpoint, i, self.max_retries)
                 if i == self.max_retries:
