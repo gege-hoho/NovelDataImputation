@@ -6,6 +6,8 @@ Created on Fri Oct  1 15:35:39 2021
 @author: gregor
 """
 import logging
+
+from helper.event import EventController, Event
 from helper.timer import Timer
 from helper.configIntegrityChecker import ConfigIntegrityChecker
 from mfpCrawler.crawler import MyFitnessPalCrawler
@@ -13,7 +15,8 @@ import json
 from collections import deque
 import datetime
 import time
-from databaseConnector.databaseConnector import SqliteConnector, database_date_format, database_date_time_format
+import shutil
+from databaseConnector.databaseConnector import SqliteConnector, database_date_format, database_date_time_format, User
 
 # read the secrets from file
 
@@ -21,6 +24,8 @@ mode_friends = 'friends'
 mode_diaries = 'diaries'
 mode_diaries_test = 'diaries-test'
 
+#datetime format used in filenames
+file_datetime_format = "%d-%m-%y_%H-%M"
 
 def check_config_integrity(config):
     """
@@ -33,6 +38,7 @@ def check_config_integrity(config):
     c.check_int('sleep-time')
     c.check_set('mode', (mode_friends, mode_diaries, mode_diaries_test))
     c.check_str('database-path')
+    c.check_str('database-backup-folder')
     c.check_list('initial-users')
     c.check_int('friend-page-limit')
     c.check_str('log-level')
@@ -57,6 +63,19 @@ def check_secret_config_integrity(config):
         raise Exception('some values in secret config are missing')
 
 
+def relogin_callback(crawler: MyFitnessPalCrawler):
+    logging.info("Relogin to circumvent logout")
+    crawler.login()
+
+
+def save_db_callback(src_path, backup_folder):
+    backup_folder = backup_folder.rstrip('/')
+    backup_file_path = f"{backup_folder}/{datetime.datetime.now().strftime(file_datetime_format)}.db"
+    logging.info("Creating copy of DB...")
+    shutil.copy(src_path, backup_file_path)
+    logging.info("DB saved at %s", backup_file_path)
+
+
 class Main:
     def __init__(self):
         secret_config = read_json("secret.json")
@@ -64,12 +83,11 @@ class Main:
 
         config = read_json("config.json")
         check_config_integrity(config)
-
         logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                             datefmt=database_date_time_format,
                             handlers=[
                                 logging.FileHandler(
-                                    "logs/" + datetime.datetime.now().strftime("%d-%m-%y_%H-%M") + ".log"),
+                                    "logs/" + datetime.datetime.now().strftime(file_datetime_format) + ".log"),
                                 logging.StreamHandler()
                             ],
                             level=logging.getLevelName(config["log-level"]))
@@ -88,8 +106,13 @@ class Main:
         if self.mode == mode_diaries_test:
             self.test_users = [self.db.get_user_by_username(x) for x in config["initial-users"]]
 
-    def re_login(self):
-        self.crawler.login()
+        # init the events
+        self.event_queue = EventController()
+        re_login_event = Event(relogin_callback, hour=1, args=[self.crawler], instant=False)
+        save_db_event = Event(save_db_callback, hour=4, args=[config["database-path"],
+                                                              config["database-backup-folder"]])
+        self.event_queue.add_event(re_login_event)
+        self.event_queue.add_event(save_db_event)
 
     def log_statistics(self):
         statistics = self.db.get_user_statistics()
@@ -110,7 +133,7 @@ class Main:
         uncrawled_users = [x for x in uncrawled_users if x not in self.users_with_problems]
         return uncrawled_users
 
-    def crawl_profile(self, curr_user):
+    def crawl_profile(self, curr_user: User):
         # crawl profile information
         user_data = self.crawler.crawl_profile(curr_user.username)
         curr_user.gender = user_data['gender']
@@ -122,7 +145,7 @@ class Main:
         self.db.save_user(curr_user)
         return curr_user
 
-    def crawl_friends(self, curr_user):
+    def crawl_friends(self, curr_user: User):
         curr_user = self.crawl_profile(curr_user)
         # crawl friends
         friends = self.crawler.crawl_friends(curr_user.username)
@@ -132,7 +155,7 @@ class Main:
         self.db.create_users(friends)
         return curr_user
 
-    def crawl_diary(self, curr_user):
+    def crawl_diary(self, curr_user: User):
         """
         max_date = datetime.date(2021, 10, 1)
         from_date = curr_user.joined_date
@@ -198,14 +221,11 @@ class Main:
         return curr_user
 
     def main(self):
-        relogin_time = time.time()
+        # relogin_time = time.time()
         logging.info("Starting with mode %s", self.mode)
         queue = deque()
         while True:
-            if time.time() - relogin_time > 1800:
-                # relogin every half hour
-                self.re_login()
-                relogin_time = time.time()
+            self.event_queue.check_events()
             if len(queue) == 0:
                 # no more users in queue get more from db
                 uncrawled_users = self.get_uncrawled_users()
@@ -234,4 +254,9 @@ class Main:
 
 if __name__ == '__main__':
     main = Main()
-    main.main()
+    try:
+        main.main()
+    except Exception as e:
+        logging.exception(e)
+        raise e
+

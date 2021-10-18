@@ -2,6 +2,11 @@ import logging
 from datetime import datetime
 import sqlite3
 
+# datetime formats used in database
+database_date_time_format = '%d-%m-%y %H:%M:%S'
+# date format used in database
+database_date_format = '%d-%m-%y'
+
 insert_into_user = "insert into user (username) values (?)"
 select_uncrawled_friends_users = "select * from user where friends_crawl_time is NULL"
 select_uncrawled_diaries_users = "select * from user where has_public_diary = 1 and food_crawl_time is NULL"
@@ -21,10 +26,6 @@ select_count_user_profile_crawled = "select count(*) from user where profile_cra
 select_count_user_public_diary = "select count(*) from user where has_public_diary = 1"
 
 delete_meal_history_by_user = "delete from meal_history where user = ?"
-
-database_date_time_format = '%d-%m-%y %H:%M:%S'
-database_date_format = '%d-%m-%y'
-
 
 class User:
     def __init__(self, user_data):

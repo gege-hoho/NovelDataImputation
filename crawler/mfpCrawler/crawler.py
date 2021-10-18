@@ -71,7 +71,7 @@ def create_food_entry(date, meal, name, calories, carbs, fat, protein, cholest, 
 
 class MyFitnessPalCrawler:
     def __init__(self, email, password, friend_page_limit=100, timeout=5, max_retries=5):
-        self.max_retries = 5
+        self.max_retries = max_retries
         self.timeout = timeout
         self.session = requests.Session()
         self.translations = []
@@ -108,9 +108,12 @@ class MyFitnessPalCrawler:
                 if i == self.max_retries:
                     raise t
 
-    # sets the self.session and tries to login
     def login(self):
+        """
+        Sets the self.session and tries to login using the data given at Object creation
+        """
         email, password = self.data
+        logging.info("Login into %s", email)
         soup, _ = self.get(endpoints.login_endpoint)
         auth_token = soup.find(class_="form login LoginForm").find(attrs={"name": "authenticity_token"})["value"]
         payload = {"utf8": "✓",
@@ -125,8 +128,13 @@ class MyFitnessPalCrawler:
             logging.error("login failed for %s", email)
             logging.error(self.last_request.text)
 
-    # checks if the username is currently logged in
+    #
     def logged_in(self):
+        """
+        Checks if the username is currently logged in, based on the last request
+        :return: is logged_in
+        :rtype: bool
+        """
         soup = self.last_request
         links = [x.get("href") for x in soup.find_all("a")]
         logged = '/account/logout' in links

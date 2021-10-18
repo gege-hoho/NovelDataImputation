@@ -57,6 +57,10 @@ Oct 15:
 -Implemented test mode for diaries
 -Implemented solution for Diaries which are longer than 1000
 
+Oct 18:
+-Added Event System to call functions every x hours
+-Added DB save every 4 hours
+
 Known Problems:
 user CSARdiver has over 1000 entries for recrawl
 

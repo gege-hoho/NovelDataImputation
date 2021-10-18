@@ -7,6 +7,7 @@ Created on Fri Oct  1 15:35:39 2021
 """
 import logging
 import sys
+import time
 
 from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
@@ -14,7 +15,7 @@ from pydrive2.drive import GoogleDrive
 #gauth = GoogleAuth()
 #gauth.LocalWebserverAuth()
 #drive = GoogleDrive(gauth)
-
+from helper.event import EventController, Event
 from mfpCrawler import crawler
 import json
 from collections import deque
@@ -23,17 +24,13 @@ from databaseConnector import databaseConnector
 from translate import Translator
 import requests
 
-max_retries = 5
-i = 0
-while i < 5:
-    try:
-        raise TimeoutError #r = requests.get('http://10.255.255.1',timeout=1)
-        break
-    except TimeoutError as t:
-        i += 1
-        print(f"{i} try")
-        if i == 5:
-            raise t
+def abc(k):
+    print(k)
+
+q = EventController()
+ev = Event(abc, seconds=1, args=["kkkkk","okokoko"])
+time.sleep(3)
+ev.check()
 
 # read the secrets from file
 

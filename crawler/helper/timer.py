@@ -9,7 +9,7 @@ class Timer:
     def tick(self):
         self._tick = time.time()
 
-    def tock(self, msg):
+    def tock(self, msg: str):
         if self._tick:
             tock = time.time() - self._tick
             self._tick = None
