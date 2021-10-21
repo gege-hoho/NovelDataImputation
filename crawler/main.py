@@ -22,10 +22,12 @@ from databaseConnector.databaseConnector import SqliteConnector, database_date_f
 
 mode_friends = 'friends'
 mode_diaries = 'diaries'
+mode_profile = 'profile'
 mode_diaries_test = 'diaries-test'
 
-#datetime format used in filenames
+# datetime format used in filenames
 file_datetime_format = "%d-%m-%y_%H-%M"
+
 
 def check_config_integrity(config):
     """
@@ -36,7 +38,7 @@ def check_config_integrity(config):
     c = ConfigIntegrityChecker(config)
 
     c.check_int('sleep-time')
-    c.check_set('mode', (mode_friends, mode_diaries, mode_diaries_test))
+    c.check_set('mode', (mode_friends, mode_diaries, mode_diaries_test, mode_profile))
     c.check_str('database-path')
     c.check_str('database-backup-folder')
     c.check_list('initial-users')
@@ -109,7 +111,7 @@ class Main:
         # init the events
         self.event_queue = EventController()
         re_login_event = Event(relogin_callback, hour=1, args=[self.crawler], instant=False)
-        save_db_event = Event(save_db_callback, hour=4, args=[config["database-path"],
+        save_db_event = Event(save_db_callback, hour=8, args=[config["database-path"],
                                                               config["database-backup-folder"]])
         self.event_queue.add_event(re_login_event)
         self.event_queue.add_event(save_db_event)
@@ -127,6 +129,8 @@ class Main:
             uncrawled_users = self.db.get_uncrawled_friends_users()
         if self.mode == mode_diaries:
             uncrawled_users = self.db.get_uncrawled_diaries_users()
+        if self.mode == mode_profile:
+            uncrawled_users = self.db.get_uncrawled_profile_users()
         if self.mode == mode_diaries_test:
             uncrawled_users = self.test_users
         # filter all users with problems out
@@ -243,6 +247,8 @@ class Main:
 
             if self.mode == mode_diaries:
                 curr_user = self.crawl_diary(curr_user)
+            if self.mode == mode_profile:
+                curr_user = self.crawl_profile(curr_user)
             if self.mode == mode_diaries_test:
                 # delete old diary entry
                 self.db.delete_meal_history_for_user(curr_user)
@@ -252,6 +258,8 @@ class Main:
                 curr_user = self.crawl_diary(curr_user)
 
 
+
+
 if __name__ == '__main__':
     main = Main()
     try:
@@ -259,4 +267,3 @@ if __name__ == '__main__':
     except Exception as e:
         logging.exception(e)
         raise e
-

@@ -10,6 +10,7 @@ database_date_format = '%d-%m-%y'
 insert_into_user = "insert into user (username) values (?)"
 select_uncrawled_friends_users = "select * from user where friends_crawl_time is NULL"
 select_uncrawled_diaries_users = "select * from user where has_public_diary = 1 and food_crawl_time is NULL"
+select_uncrawled_profile_users = "select * from user where profile_crawl_time is Null"
 select_users_by_username = "select * from user where username = ?"
 update_user = "update user set gender = ?, location = ?, joined_date = ?," \
               "food_crawl_time = ?, friends_crawl_time = ?, profile_crawl_time = ?," \
@@ -247,6 +248,18 @@ class SqliteConnector:
         :rtype: list of User
         """
         cur = self.con.execute(select_uncrawled_diaries_users)
+        result = cur.fetchall()
+        result = [User(x) for x in result]
+        cur.close()
+        return result
+
+    def get_uncrawled_profile_users(self):
+        """
+        Get list of users who does not have their profile crawled
+        :return:
+        :rtype: list of User
+        """
+        cur = self.con.execute(select_uncrawled_profile_users)
         result = cur.fetchall()
         result = [User(x) for x in result]
         cur.close()
