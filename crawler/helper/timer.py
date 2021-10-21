@@ -4,16 +4,15 @@ import time
 
 class Timer:
     def __init__(self):
-        self._tick = None
+        self._tick = []
 
     def tick(self):
-        self._tick = time.time()
+        self._tick.append(time.time())
 
     def tock_s(self):
-        if self._tick:
-            tock = time.time() - self._tick
-            self._tick = None
-            return tock
+        tick = self._tick.pop()
+        tock = time.time() - tick
+        return tock
 
     def tock(self, msg: str):
         tock = self.tock_s()

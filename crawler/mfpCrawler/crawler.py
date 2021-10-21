@@ -70,7 +70,8 @@ def create_food_entry(date, meal, name, calories, carbs, fat, protein, cholest, 
 
 
 class MyFitnessPalCrawler:
-    def __init__(self, email, password, friend_page_limit=100, timeout=5, max_retries=5):
+    def __init__(self, email, password, friend_page_limit=100, timeout=5, max_retries=5, use_translation=False):
+        self.use_translation = use_translation
         self.max_retries = max_retries
         self.timeout = timeout
         self.session = requests.Session()
@@ -86,6 +87,8 @@ class MyFitnessPalCrawler:
         while i < self.max_retries:
             try:
                 r = self.session.get(endpoint, headers=headers, timeout=self.timeout)
+                if r.status_code != 200:
+                    logging.warning("Not 200 status code !")
                 self.last_request = BeautifulSoup(r.text, 'html.parser')
                 return self.last_request, r.status_code
             except Timeout as t:
@@ -100,6 +103,8 @@ class MyFitnessPalCrawler:
         while i < self.max_retries:
             try:
                 r = self.session.post(endpoint, data=payload, headers=headers, timeout=self.timeout)
+                if r.status_code != 200:
+                    logging.warning("Not 200 status code !")
                 self.last_request = BeautifulSoup(r.text, 'html.parser')
                 return self.last_request, r.status_code
             except Timeout as t:
@@ -173,6 +178,23 @@ class MyFitnessPalCrawler:
                 food_items.append(food_item)
         return food_items
 
+    def translate_meal_string(self, meal_string):
+        # check if we already entcountered this meal_string
+        translation = next((b for (a, b) in self.translations if a == meal_string), None)
+        if translation:
+            return translation
+        try:
+            translator = Translator(to_lang='en', from_lang=detect(meal_string))
+            translation = translator.translate(meal_string)
+        except:
+            translation = meal_string
+
+        translation = translation.strip().replace("\n", "").lower()
+        logging.info("Translated %s to %s", meal_string, translation)
+        if translation == 'snack':
+            translation = 'snacks'
+        return translation
+
     def detect_meal(self, meal):
         """
         Formats the string and converts it to one of the meal types
@@ -181,7 +203,7 @@ class MyFitnessPalCrawler:
         :return: meal type
         :rtype: str
         """
-        meal_types = ['breakfast', 'lunch', 'dinner', 'snacks','dessert']
+        meal_types = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert']
         meal_string = meal.strip().replace("\n", "").lower()
 
         match = re.compile("meal ([0-9])").match(meal_string)
@@ -190,27 +212,16 @@ class MyFitnessPalCrawler:
         if meal_string in meal_types:
             return meal_string
 
-        #check if we already entcountered this meal_string
-        translation = next((b for (a, b) in self.translations if a == meal_string), None)
-        if translation:
-            return translation
-
-        translator = Translator(to_lang='en', from_lang=detect(meal_string))
-        translation = translator.translate(meal_string)
-
-        translation = translation.strip().replace("\n", "").lower()
-        logging.info("Translated %s to %s", meal_string, translation)
-        if translation == 'snack':
-            translation = 'snacks'
-
-        if translation in meal_types:
-            logging.debug("added %s %s to translation", meal_string, translation)
-            self.translations.append((meal_string, translation))
-            return translation
-        # we couldn't match the translated meal_string. Therefore we throw away the translation and save it as is
-        self.translations.append((meal_string, meal_string))
-        logging.info("couldn't match %s", meal_string)
-        return translation
+        if self.use_translation:
+            translation = self.translate_meal_string(meal_string)
+            if translation in meal_types:
+                logging.debug("added %s %s to translation", meal_string, translation)
+                self.translations.append((meal_string, translation))
+                return translation
+            # we couldn't match the translated meal_string. Therefore we throw away the translation and save it as is
+            self.translations.append((meal_string, meal_string))
+            logging.info("couldn't match %s", meal_string)
+        return meal_string
 
     def crawl_profile(self, username):
         """

@@ -8,6 +8,8 @@ database_date_time_format = '%d-%m-%y %H:%M:%S'
 database_date_format = '%d-%m-%y'
 
 insert_into_user = "insert into user (username) values (?)"
+insert_into_meal_statistics = "insert into meal_statistics(user, time, entries) values(?,?,?)"
+select_meal_statistics = "select avg(time), avg(entries) from meal_statistics"
 select_uncrawled_friends_users = "select * from user where friends_crawl_time is NULL"
 select_uncrawled_diaries_users = "select * from user where has_public_diary = 1 and food_crawl_time is NULL"
 select_uncrawled_profile_users = "select * from user where profile_crawl_time is Null"
@@ -27,6 +29,7 @@ select_count_user_profile_crawled = "select count(*) from user where profile_cra
 select_count_user_public_diary = "select count(*) from user where has_public_diary = 1"
 
 delete_meal_history_by_user = "delete from meal_history where user = ?"
+
 
 class User:
     def __init__(self, user_data):
@@ -105,6 +108,7 @@ class SqliteConnector:
         :type db_name: str
         """
         self.con = sqlite3.connect(db_name)
+        self.meal_item_storage = {}
 
     def exists_user(self, username, cur_cursor=None):
         """
@@ -163,6 +167,21 @@ class SqliteConnector:
         self.con.commit()
         cur.close()
 
+    def create_meal_statistic(self, user: User, time, entries):
+        """
+        Adds a statistic for the meal crawl of the user
+        :param user: crawled user
+        :type user: User
+        :param time: time it took to crawl the user
+        :type time: int
+        :param entries: number of entries in diary
+        :type entries: int
+        """
+        cur = self.con.cursor()
+        self.con.execute(insert_into_meal_statistics, (user.id, time, entries)).close()
+        self.con.commit()
+        cur.close()
+
     def create_meal_item(self, data):
         """
         Creates an meal item in the database
@@ -177,6 +196,19 @@ class SqliteConnector:
         self.con.execute(insert_into_meal_item, user_data).close()
         self.con.commit()
         return self.get_meal_item(data)
+
+    def get_meal_statistics(self):
+        cur = self.con.cursor()
+        cur.execute(select_meal_statistics)
+        (avg_time, avg_entries) = cur.fetchone()
+        if avg_time  is None or avg_entries is None:
+            avg_time = 0
+            avg_entries = 0
+        cur.close()
+        return {
+            "avg-time": avg_time,
+            "avg-entries": avg_entries
+        }
 
     def get_user_statistics(self):
         """
@@ -222,11 +254,15 @@ class SqliteConnector:
         """
         cur = self.con.cursor()
         quick_add, name = _translate_quick_add(data)
+        if name in self.meal_item_storage.keys():
+            return self.meal_item_storage[name]
         cur.execute(get_meal_item, (name, quick_add))
         res = cur.fetchone()
         cur.close()
         if res:
-            return MealItem(res)
+            res = MealItem(res)
+            self.meal_item_storage[name] = res
+            return res
         return None
 
     def get_uncrawled_friends_users(self):

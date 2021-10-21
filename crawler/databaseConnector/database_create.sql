@@ -45,3 +45,11 @@ create table meal_history
     meal      text    not null
 );
 
+create table meal_statistics
+(
+    user    int
+        references user,
+    time    int,
+    entries int
+);
+

@@ -110,6 +110,8 @@ class Main:
         if self.mode == mode_diaries_test:
             self.test_users = [self.db.get_user_by_username(x) for x in config["initial-users"]]
 
+        self.meal_items = []
+
         # init the events
         self.event_queue = EventController()
         re_login_event = Event(relogin_callback, hour=1, args=[self.crawler], instant=False)
@@ -176,6 +178,8 @@ class Main:
             from_date = max_date - datetime.timedelta(days=365 * 5)
         to_date = from_date + datetime.timedelta(days=365)
         """
+        self.timer.tick()
+        no_of_entries = 0
         to_date = datetime.date(2021, 10, 1)
         from_date = to_date - datetime.timedelta(days=365)
         cutoff_date = curr_user.joined_date
@@ -214,7 +218,7 @@ class Main:
                 from_date = to_date - datetime.timedelta(days=365)
                 if from_date < cutoff_date:
                     from_date = cutoff_date
-
+            no_of_entries += len(diary)
             # put in database
             logging.info("insert %i diary entries of %s in database", len(diary), curr_user.username)
             self.timer.tick()
@@ -230,6 +234,11 @@ class Main:
 
         curr_user.food_crawl_time = datetime.datetime.now()
         self.db.save_user(curr_user)
+        meal_statistics = self.db.get_meal_statistics()
+        crawl_time = self.timer.tock_s()
+        logging.info(f"Crawling of %s took %.2f with %i items", curr_user.username, crawl_time, no_of_entries)
+        logging.info(f"On average takes crawling %.2f with %i items", meal_statistics['avg-time'], meal_statistics['avg-entries'])
+        self.db.create_meal_statistic(curr_user, crawl_time, no_of_entries)
         return curr_user
 
     def main(self):
@@ -264,8 +273,6 @@ class Main:
                 self.db.save_user(curr_user)
                 # crawl new diary
                 curr_user = self.crawl_diary(curr_user)
-
-
 
 
 if __name__ == '__main__':

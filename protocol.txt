@@ -61,6 +61,16 @@ Oct 18:
 -Added Event System to call functions every x hours
 -Added DB save every 4 hours
 
+Oct 19:
+-over 1 million user found
+-starting with profile crawling
+
+Oct 20:
+-made diary crawling faster.
+-remove translation because of limits to the translate api
+-better timer
+-introduced statistics for diary crawling
+
 Known Problems:
 user CSARdiver has over 1000 entries for recrawl
 

@@ -16,6 +16,8 @@ from pydrive2.drive import GoogleDrive
 #gauth.LocalWebserverAuth()
 #drive = GoogleDrive(gauth)
 from helper.event import EventController, Event
+from helper.timer import Timer
+import time
 from mfpCrawler import crawler
 import json
 from collections import deque
@@ -24,13 +26,7 @@ from databaseConnector import databaseConnector
 from translate import Translator
 import requests
 
-def abc(k):
-    print(k)
 
-q = EventController()
-ev = Event(abc, seconds=1, args=["kkkkk","okokoko"])
-time.sleep(3)
-ev.check()
 
 # read the secrets from file
 
@@ -44,6 +40,15 @@ logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                         logging.StreamHandler()
                     ],
                     level=logging.DEBUG)
+t = Timer()
+t.tick()
+time.sleep(2.0)
+t.tick()
+time.sleep(1.0)
+t.tock("should be 1 sec")
+t.tock("should be 3")
+
+
 f = open("secret.json", 'r')
 
 db = databaseConnector.SqliteConnector('databaseConnector/mfp.db')
