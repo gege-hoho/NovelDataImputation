@@ -11,6 +11,11 @@ class ConfigIntegrityChecker:
         if not type(self.config[name]) is int:
             raise Exception(f"{name} has to be an int")
 
+    def check_float(self, name):
+        self.check_exists(name)
+        if not type(self.config[name]) is float:
+            raise Exception(f"{name} has to be an int")
+
     def check_set(self, name, values):
         self.check_exists(name)
         if not self.config[name] in values:

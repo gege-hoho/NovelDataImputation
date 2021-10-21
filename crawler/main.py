@@ -37,7 +37,8 @@ def check_config_integrity(config):
     """
     c = ConfigIntegrityChecker(config)
 
-    c.check_int('sleep-time')
+    c.check_float('sleep-time-diary')
+    c.check_float('sleep-time-profile')
     c.check_set('mode', (mode_friends, mode_diaries, mode_diaries_test, mode_profile))
     c.check_str('database-path')
     c.check_str('database-backup-folder')
@@ -100,7 +101,8 @@ class Main:
 
         self.mode = config['mode']
         self.test_users = []
-        self.sleep_time = config['sleep-time']
+        self.sleep_time_diary = config['sleep-time-diary']
+        self.sleep_time_profile = config['sleep-time-profile']
         self.timer = Timer()
         self.users_with_problems = []
         # initialise users if not exists
@@ -139,6 +141,7 @@ class Main:
 
     def crawl_profile(self, curr_user: User):
         # crawl profile information
+        self.timer.tick()
         user_data = self.crawler.crawl_profile(curr_user.username)
         curr_user.gender = user_data['gender']
         curr_user.location = user_data['location']
@@ -147,6 +150,11 @@ class Main:
         curr_user.age = user_data['age']
         curr_user.profile_crawl_time = datetime.datetime.now()
         self.db.save_user(curr_user)
+        delta = self.timer.tock_s()
+
+        if self.sleep_time_profile - delta > 0:
+            time.sleep(self.sleep_time_profile - delta)
+
         return curr_user
 
     def crawl_friends(self, curr_user: User):
@@ -217,8 +225,8 @@ class Main:
                 self.db.create_meal_history(curr_user.id, item.id, diary_entry['date'], diary_entry['meal'])
             delta = self.timer.tock("Database write")
 
-            if self.sleep_time - delta > 0:
-                time.sleep(self.sleep_time - delta)
+            if self.sleep_time_diary - delta > 0:
+                time.sleep(self.sleep_time_diary - delta)
 
         curr_user.food_crawl_time = datetime.datetime.now()
         self.db.save_user(curr_user)
