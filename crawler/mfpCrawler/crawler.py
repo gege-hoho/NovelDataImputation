@@ -69,6 +69,18 @@ def create_food_entry(date, meal, name, calories, carbs, fat, protein, cholest, 
             }
 
 
+def pre_processor(text: str):
+    """
+    Does General Preprocessing on the get
+    :param text:
+    :type text:
+    :return:
+    :rtype:
+    """
+    text = text.replace(u'\xa0', ' ')
+    return text
+
+
 class MyFitnessPalCrawler:
     def __init__(self, email, password, friend_page_limit=100, timeout=5, max_retries=5, use_translation=False):
         self.use_translation = use_translation
@@ -89,7 +101,8 @@ class MyFitnessPalCrawler:
                 r = self.session.get(endpoint, headers=headers, timeout=self.timeout)
                 if r.status_code != 200:
                     logging.warning("Not 200 status code !")
-                self.last_request = BeautifulSoup(r.text, 'html.parser')
+                text = pre_processor(r.text)
+                self.last_request = BeautifulSoup(text, 'html.parser')
                 return self.last_request, r.status_code
             except Timeout as t:
                 i += 1
@@ -105,7 +118,8 @@ class MyFitnessPalCrawler:
                 r = self.session.post(endpoint, data=payload, headers=headers, timeout=self.timeout)
                 if r.status_code != 200:
                     logging.warning("Not 200 status code !")
-                self.last_request = BeautifulSoup(r.text, 'html.parser')
+                text = pre_processor(r.text)
+                self.last_request = BeautifulSoup(text, 'html.parser')
                 return self.last_request, r.status_code
             except Timeout as t:
                 i += 1

@@ -137,6 +137,7 @@ class Main:
             uncrawled_users = self.db.get_uncrawled_profile_users()
         if self.mode == mode_diaries_test:
             uncrawled_users = self.test_users
+            self.test_users = []
         # filter all users with problems out
         uncrawled_users = [x for x in uncrawled_users if x not in self.users_with_problems]
         return uncrawled_users
