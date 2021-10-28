@@ -111,6 +111,7 @@ class Main:
             self.test_users = [self.db.get_user_by_username(x) for x in config["initial-users"]]
 
         self.meal_items = []
+        self.diary_timeout_count = 0
 
         # init the events
         self.event_queue = EventController()
@@ -201,6 +202,13 @@ class Main:
             if ret == 'password':
                 # password is required skip
                 break
+            if ret == 'timeout':
+                logging.warning("Timeout for user %s, skip profiles")
+                self.diary_timeout_count += 1
+                if self.diary_timeout_count > 2:
+                    logging.exception("Too many timeouts in a row, something is not right")
+                    raise Exception("Too many timeouts in a row, something is not right")
+                break
             # update time
             if len(diary) == 1000:
                 # only 1000 elements get crawled. After that it gets cut of at the front of the list
@@ -220,6 +228,8 @@ class Main:
                 if from_date < cutoff_date:
                     from_date = cutoff_date
             no_of_entries += len(diary)
+            if no_of_entries > 0:
+                self.diary_timeout_count = 0
             # put in database
             logging.info("insert %i diary entries of %s in database", len(diary), curr_user.username)
             self.timer.tick()

@@ -81,6 +81,15 @@ def pre_processor(text: str):
     return text
 
 
+def error_callback(t):
+    """
+    Callback function for get and post that is called as default
+    :param t:
+    :type t: Timeout
+    """
+    raise t
+
+
 class MyFitnessPalCrawler:
     def __init__(self, email, password, friend_page_limit=100, timeout=5, max_retries=5, use_translation=False):
         self.use_translation = use_translation
@@ -94,11 +103,22 @@ class MyFitnessPalCrawler:
         self.data = (email, password)
         self.login()
 
-    def get(self, endpoint):
+    def get(self, endpoint, callback=error_callback):
+        """
+        Sends a get request to the given endpoint retries max_retries times with a timeout
+        If the request fails max_retries times, the error callback is called with the Timeout
+        as Argument
+        :param endpoint: endpoint
+        :type endpoint: str
+        :param callback: callback function
+        :type callback: func
+        :return: request, statuscode
+        :rtype:
+        """
         i = 0
         while i < self.max_retries:
             try:
-                r = self.session.get(endpoint, headers=headers, timeout=self.timeout*(i+1))
+                r = self.session.get(endpoint, headers=headers, timeout=self.timeout)
                 if r.status_code != 200:
                     logging.warning("Not 200 status code !")
                 text = pre_processor(r.text)
@@ -108,14 +128,27 @@ class MyFitnessPalCrawler:
                 i += 1
                 logging.warning("Timeout during request at %s retry %i out of %i", endpoint, i, self.max_retries)
                 if i == self.max_retries:
-                    raise t
+                    return callback(t)
 
-    def post(self, endpoint, payload):
+    def post(self, endpoint, payload, callback=error_callback):
+        """
+        Sends a post request to the given endpoint with payload, retries max_retries times with a timeout
+        If the request fails max_retries times, the error callback is called with the Timeout
+        as Argument
+        :param payload: payload
+        :type payload: dict
+        :param endpoint: endpoint
+        :type endpoint: str
+        :param callback: callback function
+        :type callback: func
+        :return: request, statuscode
+        :rtype:
+        """
         i = 0
         r = None
         while i < self.max_retries:
             try:
-                r = self.session.post(endpoint, data=payload, headers=headers, timeout=self.timeout*(i+1))
+                r = self.session.post(endpoint, data=payload, headers=headers, timeout=self.timeout)
                 if r.status_code != 200:
                     logging.warning("Not 200 status code !")
                 text = pre_processor(r.text)
@@ -125,7 +158,7 @@ class MyFitnessPalCrawler:
                 i += 1
                 logging.warning("Timeout during request at %s retry %i out of %i", endpoint, i, self.max_retries)
                 if i == self.max_retries:
-                    raise t
+                    return callback(t)
 
     def login(self):
         """
@@ -147,7 +180,6 @@ class MyFitnessPalCrawler:
             logging.error("login failed for %s", email)
             logging.error(self.last_request.text)
 
-    #
     def logged_in(self):
         """
         Checks if the username is currently logged in, based on the last request
@@ -350,9 +382,12 @@ class MyFitnessPalCrawler:
                           from_date.strftime(date_format),
                           to_date.strftime(date_format))
 
-        soup, _ = self.get(endpoints.diary_endpoint.format(username,
-                                                           from_date.strftime(date_format),
-                                                           to_date.strftime(date_format)))
+        soup, status = self.get(endpoints.diary_endpoint.format(username,
+                                                                from_date.strftime(date_format),
+                                                                to_date.strftime(date_format)),
+                                callback=lambda _: (None, 999))
+        if status == 999:
+            return [], 'timeout'
         title = soup.find('h1', {'class': 'main-title'})
         if title is not None:
             if title.text == 'Password Required':
