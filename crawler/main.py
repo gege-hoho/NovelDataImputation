@@ -203,7 +203,7 @@ class Main:
                 # somethings wrong skip this user
                 break
             if ret == 'timeout':
-                logging.warning("Timeout for user %s, skip profiles")
+                logging.warning("Timeout for user %s, skip profiles", curr_user.username)
                 self.diary_timeout_count += 1
                 if self.diary_timeout_count > 2:
                     logging.exception("Too many timeouts in a row, something is not right")
