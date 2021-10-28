@@ -98,7 +98,7 @@ class MyFitnessPalCrawler:
         i = 0
         while i < self.max_retries:
             try:
-                r = self.session.get(endpoint, headers=headers, timeout=self.timeout)
+                r = self.session.get(endpoint, headers=headers, timeout=self.timeout*(i+1))
                 if r.status_code != 200:
                     logging.warning("Not 200 status code !")
                 text = pre_processor(r.text)
@@ -115,7 +115,7 @@ class MyFitnessPalCrawler:
         r = None
         while i < self.max_retries:
             try:
-                r = self.session.post(endpoint, data=payload, headers=headers, timeout=self.timeout)
+                r = self.session.post(endpoint, data=payload, headers=headers, timeout=self.timeout*(i+1))
                 if r.status_code != 200:
                     logging.warning("Not 200 status code !")
                 text = pre_processor(r.text)
@@ -354,14 +354,21 @@ class MyFitnessPalCrawler:
                                                            from_date.strftime(date_format),
                                                            to_date.strftime(date_format)))
         title = soup.find('h1', {'class': 'main-title'})
-        if title and title.text == 'Password Required':
-            logging.info("Password required to enter diary")
-            return [], 'password'
+        if title is not None:
+            if title.text == 'Password Required':
+                logging.info("Password required to enter diary")
+                return [], 'password'
+            if title.text == 'This Username is Invalid':
+                logging.info("Username is no longer valid")
+                return [], 'valid'
 
         dates = soup.find("h2", {"id": "date"})
-        if dates.text == 'No diary entries were found for this date range.':
+        if dates and dates.text == 'No diary entries were found for this date range.':
             logging.info("No diary entries were found for the date range")
             return [], 'range'
+        if dates is None:
+            logging.error("Unkown Error, could not detect dates on the site")
+            logging.error(soup.prettify())
         dates = dates.previous_sibling
         data = []
         current_date = None
