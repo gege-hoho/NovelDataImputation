@@ -199,8 +199,8 @@ class Main:
             logging.info("crawl between %s, %s", from_date.strftime(database_date_format),
                          to_date.strftime(database_date_format))
             diary, ret = self.crawler.crawl_diary(curr_user.username, from_date, to_date)
-            if ret == 'password':
-                # password is required skip
+            if ret == 'skip':
+                # somethings wrong skip this user
                 break
             if ret == 'timeout':
                 logging.warning("Timeout for user %s, skip profiles")

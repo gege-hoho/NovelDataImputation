@@ -392,10 +392,13 @@ class MyFitnessPalCrawler:
         if title is not None:
             if title.text == 'Password Required':
                 logging.info("Password required to enter diary")
-                return [], 'password'
+                return [], 'skip'
             if title.text == 'This Username is Invalid':
-                logging.info("Username is no longer valid")
-                return [], 'valid'
+                logging.warning("Username is no longer valid")
+                return [], 'skip'
+            if title.text == 'This Diary is Private':
+                logging.warning("This Diary is Private")
+                return [], 'skip'
 
         dates = soup.find("h2", {"id": "date"})
         if dates and dates.text == 'No diary entries were found for this date range.':
@@ -404,6 +407,7 @@ class MyFitnessPalCrawler:
         if dates is None:
             logging.error("Unkown Error, could not detect dates on the site")
             logging.error(soup.prettify())
+            return [], 'skip'
         dates = dates.previous_sibling
         data = []
         current_date = None
