@@ -31,8 +31,17 @@ select_all_meal_items = "select * from meal_item order by name DESC limit ?"
 
 delete_meal_history_by_user = "delete from meal_history where user = ?"
 
+insert_into_meal_history_flat = "insert into meal_history_flat" \
+                                 "(date, meal, user, name, quick_add, calories, carbs, " \
+                                 "fat, protein, cholest, sodium, sugars, fiber) values " \
+                                 "(?,?,?,?,?,?,?,?,?,?,?,?,?)"
+
 
 class User:
+    __slots__ = 'id', 'username', 'gender', 'location', 'joined_date', \
+                'food_crawl_time', 'friends_crawl_time', 'profile_crawl_time', \
+                'has_public_diary', 'age'
+
     def __init__(self, user_data):
         if len(user_data) != 10:
             raise Exception("length mismatch")
@@ -53,6 +62,8 @@ class User:
 
 
 class MealItem:
+    __slots__ = 'id', 'name', 'quick_add', 'calories', 'carbs', 'fat', 'protein', 'cholest', 'sodium', 'sugar', 'fiber'
+
     def __init__(self, meal_data):
         if len(meal_data) != 11:
             raise Exception("length mismatch")
@@ -70,6 +81,8 @@ class MealItem:
 
 
 class MealHistory:
+    __slots__ = 'user', 'meal_item', 'date', 'meal'
+
     def __init__(self, meal_history_data):
         if len(meal_history_data) != 4:
             raise Exception("length mismatch")
@@ -186,7 +199,7 @@ class SqliteConnector:
     def create_meal_item(self, data):
         """
         Creates an meal item in the database
-        :param data: as from crawler.extract_food
+        :param data: as from crawler.extract_food()['item']
         :type data: dict
         """
         # handle the MFP Quick Add functionality bc, the name has to be unique
@@ -198,11 +211,29 @@ class SqliteConnector:
         self.con.commit()
         return self.get_meal_item(data)
 
+    def create_meal_history_flat(self, history_data, user):
+        """
+        Creates an flat meal item in the database
+        :param user:
+        :type user: User
+        :param history_data: as from crawler.extract_food
+        :type history_data: dict
+        """
+        data = history_data['item']
+
+        # handle the MFP Quick Add functionality bc, the name has to be unique
+        quick_add, name = _translate_quick_add(data)
+        user_data = (history_data['date'], history_data['meal'], user.id, name, quick_add, data['calories'],
+                     data['carbs'], data['fat'], data['protein'],
+                     data['cholest'], data['sodium'], data['sugars'], data['fiber'])
+        self.con.execute(insert_into_meal_history_flat, user_data).close()
+        self.con.commit()
+
     def get_meal_statistics(self):
         cur = self.con.cursor()
         cur.execute(select_meal_statistics)
         (avg_time, avg_entries) = cur.fetchone()
-        if avg_time  is None or avg_entries is None:
+        if avg_time is None or avg_entries is None:
             avg_time = 0
             avg_entries = 0
         cur.close()

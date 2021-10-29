@@ -71,12 +71,30 @@ Oct 20:
 -better timer
 -introduced statistics for diary crawling
 
+Oct 25:
+-finished crawling of user profiles (1.1M)
+
+Oct 26:
+-fixx bugs with diary crawler
+
+Oct 28:
+-fix remaining unhandled cases with diary crawler
+
+Oct 29:
+-Try flat adding of diaries instead of normalized for speed gains
+
+Size Difference between flat and normalized add for meal_history for same data:
+
+sqlite> SELECT SUM("pgsize") FROM "dbstat" WHERE name='meal_history' or name='meal_item';
+78917632
+sqlite> SELECT SUM("pgsize") FROM "dbstat" WHERE name='meal_history_flat';
+137740288
+
+
 Known Problems:
-user CSARdiver has over 1000 entries for recrawl
 
 Todo:
 build different log level for file and print
-check if diarycrawler duplicates entries at the date borders?
 check what happens if you enter the same meal history twice? does it break
 
 Links:

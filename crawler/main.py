@@ -227,10 +227,11 @@ class Main:
             logging.info("insert %i diary entries of %s in database", len(diary), curr_user.username)
             self.timer.tick()
             for diary_entry in diary:
-                item = self.db.get_meal_item(diary_entry['item'])
-                if not item:
-                    item = self.db.create_meal_item(diary_entry['item'])
-                self.db.create_meal_history(curr_user.id, item.id, diary_entry['date'], diary_entry['meal'])
+                self.db.create_meal_history_flat(diary_entry, curr_user)
+                #item = self.db.get_meal_item(diary_entry['item'])
+                #if not item:
+                #    item = self.db.create_meal_item(diary_entry['item'])
+                #self.db.create_meal_history(curr_user.id, item.id, diary_entry['date'], diary_entry['meal'])
             delta = self.timer.tock("Database write")
 
             if self.sleep_time_diary - delta > 0:
