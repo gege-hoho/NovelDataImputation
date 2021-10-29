@@ -11,7 +11,7 @@ from helper.event import EventController, Event
 from helper.timer import Timer
 from helper.configIntegrityChecker import ConfigIntegrityChecker
 from mfpCrawler.crawler import MyFitnessPalCrawler
-import json
+from helper.helper import read_json
 from collections import deque
 import datetime
 import time
@@ -47,13 +47,6 @@ def check_config_integrity(config):
     c.check_str('log-level')
     c.check_int('crawler-timeout')
     c.check_int('crawler-max-retries')
-
-
-def read_json(filename):
-    f = open(filename, 'r')
-    config = json.loads(f.read())
-    f.close()
-    return config
 
 
 def check_secret_config_integrity(config):

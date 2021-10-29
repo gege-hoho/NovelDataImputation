@@ -1,82 +1,57 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Oct  1 15:35:39 2021
-
-@author: gregor
-"""
 import logging
-import sys
-import time
 
-from pydrive2.auth import GoogleAuth
-from pydrive2.drive import GoogleDrive
-
-#gauth = GoogleAuth()
-#gauth.LocalWebserverAuth()
-#drive = GoogleDrive(gauth)
-from helper.event import EventController, Event
+from databaseConnector.databaseConnector import SqliteConnector, database_date_time_format
+from helper.helper import read_json, convert_int
 from helper.timer import Timer
-import time
-from mfpCrawler import crawler
-import json
-from collections import deque
-import datetime
-from databaseConnector import databaseConnector
-from translate import Translator
-import requests
-
-
-
-# read the secrets from file
-
-x = 'January 31, 2008'
-print(datetime.datetime.strptime(x, '%B %d, %Y'))
 
 logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
-                    datefmt='%d-%b-%y %H:%M:%S',
+                    datefmt=database_date_time_format,
                     handlers=[
-                        logging.FileHandler("../debug.log"),
                         logging.StreamHandler()
                     ],
-                    level=logging.DEBUG)
+                    level=logging.getLevelName("DEBUG"))
+
+config = read_json("config.json")
+db = SqliteConnector(config["database-path"])
+meal_items = db.get_meal_items_limited(416832)
+#meal_items = meal_items[169:]  # skip for now
 t = Timer()
 t.tick()
-time.sleep(2.0)
-t.tick()
-time.sleep(1.0)
-t.tock("should be 1 sec")
-t.tock("should be 3")
+meal_items = meal_items.sort(key=(lambda k: k.name))
+t.tock("blaa")
 
 
-f = open("secret.json", 'r')
-
-db = databaseConnector.SqliteConnector('databaseConnector/mfp.db')
-x = db.get_user_statistics()
-statistics = db.get_user_statistics()
-logging.info("Statistics: Found User: %i, Crawled Profiles: %i, Public Diaries: %i, Rate %.2f",
-             statistics['total'], statistics['profile-crawled'], statistics['public-diary'],
-             statistics['public-diary'] / statistics['profile-crawled'])
-secret_config = json.loads(f.read())
-y = crawler.MyFitnessPalCrawler(secret_config["email"], secret_config["password"])
-to_date = datetime.date(2020, 5, 14)
-x = y.crawl_profile('TriedEverything')
-print(x)
-x = y.crawl_profile('Crossfitdad71')
-print(x)
-x = y.crawl_profile('Theo166')
-print(x)
-from_date = to_date - datetime.timedelta(days=365)
-z,_ = y.crawl_diary('clemrn73', from_date, to_date)
-#datetime.date(2020,2,6) min datetime.date(2019,1,1)
+def detector(string):
+    string = string.split(' ', 1)
+    number = convert_int(string[0])
+    # if this doesn't work try with eval e.g for 5/3
+    if number is None:
+        try:
+            number = eval(string[0])
+        except:
+            return None
+        if type(number) not in (int, float):
+            return None
+    unit = None
+    if len(string) == 2:
+        unit = string[1]
+    return number, unit
 
 
-z = db.get_meal_item('test2')
-x = db.get_uncrawled_friends_users()
+def get_unit_from_item_name(name):
+    name_split = name.split(', ')
+    curr = ""
+    for split in reversed(name_split):
 
-username = "Theo166"
-to_date = datetime.date(2021, 10, 1)
-from_date = to_date - datetime.timedelta(days=365)
-diary = y.crawl_diary(username, from_date, to_date)
+        curr = split if curr == "" else split + ', ' + curr
+        result = detector(curr)
+        if result is not None:
+            return name.rstrip(curr).rstrip(','), result
+    return None
 
-print("hh")
+
+for item in meal_items:
+    x = get_unit_from_item_name(item.name)
+    print(f"{x[1][0]}")
+    if x is None:
+        print(item.name)

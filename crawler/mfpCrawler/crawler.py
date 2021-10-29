@@ -15,6 +15,7 @@ from bs4 import BeautifulSoup, element
 import logging
 import re
 import mfpCrawler.endpoints as endpoints
+from helper.helper import convert_int
 
 headers = {
     "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
@@ -38,8 +39,9 @@ def process_nutrient(nutrient, expected_unit=None):
     if expected_unit:
         n = n.split(expected_unit)[0]
 
-    if n.isnumeric():
-        return int(n)
+    x = convert_int(n)
+    if x is not None:
+        return x
     elif n == '--':
         return None
     else:

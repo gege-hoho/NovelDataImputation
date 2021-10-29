@@ -27,6 +27,7 @@ select_count_from_meal_history = "select count(*) from meal_history where user =
 select_count_user = "select count(*) from user"
 select_count_user_profile_crawled = "select count(*) from user where profile_crawl_time is not null"
 select_count_user_public_diary = "select count(*) from user where has_public_diary = 1"
+select_all_meal_items = "select * from meal_item order by name DESC limit ?"
 
 delete_meal_history_by_user = "delete from meal_history where user = ?"
 
@@ -241,6 +242,19 @@ class SqliteConnector:
         cur = self.con.cursor()
         cur.execute(select_count_from_meal_history, (user.id,))
         (res,) = cur.fetchone()
+        cur.close()
+        return res
+
+    def get_meal_items_limited(self, limit=9999):
+        """
+        Get all meal items from database
+        :return:
+        :rtype:
+        """
+        cur = self.con.cursor()
+        cur.execute(select_all_meal_items, (limit,))
+        res = cur.fetchall()
+        res = [MealItem(x) for x in res]
         cur.close()
         return res
 
