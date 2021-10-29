@@ -226,12 +226,24 @@ class Main:
             # put in database
             logging.info("insert %i diary entries of %s in database", len(diary), curr_user.username)
             self.timer.tick()
-            for diary_entry in diary:
-                #self.db.create_meal_history_flat(diary_entry, curr_user)
-                item = self.db.get_meal_item(diary_entry['item'])
-                if not item:
-                    item = self.db.create_meal_item(diary_entry['item'])
-                self.db.create_meal_history(curr_user.id, item.id, diary_entry['date'], diary_entry['meal'])
+            items = [(self.db.get_meal_item(x['item']), x) for x in diary]
+            items_filtered = [y['item'] for (x, y) in items if x is None]
+            #create
+            self.db.create_meal_item_bulk(items_filtered)
+
+            meal_history = []
+            for (db_item, crawler_item) in items:
+                if db_item is None:
+                    db_item = self.db.get_meal_item(crawler_item['item'])
+                meal_history.append((curr_user.id, db_item.id, crawler_item['date'], crawler_item['meal']))
+            self.db.create_meal_history_bulk(meal_history)
+
+            #for diary_entry in diary:
+            #    #self.db.create_meal_history_flat(diary_entry, curr_user)
+            #    item = self.db.get_meal_item(diary_entry['item'])
+            #    if not item:
+            #        item = self.db.create_meal_item(diary_entry['item'])
+            #    self.db.create_meal_history(curr_user.id, item.id, diary_entry['date'], diary_entry['meal'])
             delta = self.timer.tock("Database write")
 
             if self.sleep_time_diary - delta > 0:

@@ -31,11 +31,7 @@ select_all_meal_items = "select * from meal_item order by name DESC limit ?"
 
 delete_meal_history_by_user = "delete from meal_history where user = ?"
 
-insert_into_meal_history_flat = "insert into meal_history_flat" \
-                                 "(date, meal, user, name, quick_add, calories, carbs, " \
-                                 "fat, protein, cholest, sodium, sugars, fiber) values " \
-                                 "(?,?,?,?,?,?,?,?,?,?,?,?,?)"
-
+max_bulk_insert = 299
 
 class User:
     __slots__ = 'id', 'username', 'gender', 'location', 'joined_date', \
@@ -211,22 +207,37 @@ class SqliteConnector:
         self.con.commit()
         return self.get_meal_item(data)
 
-    def create_meal_history_flat(self, history_data, user):
-        """
-        Creates an flat meal item in the database
-        :param user:
-        :type user: User
-        :param history_data: as from crawler.extract_food
-        :type history_data: dict
-        """
-        data = history_data['item']
+    def create_meal_item_bulk(self, data_list):
+        cur = self.con.cursor()
+        name_list = []
+        for i, data in enumerate(data_list):
+            if i % max_bulk_insert == 0:
+                cur.close()
+                self.con.commit()
+                cur = self.con.cursor()
+            quick_add, name = _translate_quick_add(data)
+            if name in name_list:
+                continue
+            name_list.append(name)
+            user_data = (name, quick_add, data['calories'],
+                         data['carbs'], data['fat'], data['protein'],
+                         data['cholest'], data['sodium'], data['sugars'], data['fiber'])
+            cur.execute(insert_into_meal_item, user_data)
 
-        # handle the MFP Quick Add functionality bc, the name has to be unique
-        quick_add, name = _translate_quick_add(data)
-        user_data = (history_data['date'], history_data['meal'], user.id, name, quick_add, data['calories'],
-                     data['carbs'], data['fat'], data['protein'],
-                     data['cholest'], data['sodium'], data['sugars'], data['fiber'])
-        self.con.execute(insert_into_meal_history_flat, user_data).close()
+        cur.close()
+        self.con.commit()
+
+    def create_meal_history_bulk(self, data_list):
+        cur = self.con.cursor()
+        for i, (user_id, meal_item_id, date, meal) in enumerate(data_list):
+            if i % max_bulk_insert == 0:
+                cur.close()
+                self.con.commit()
+                cur = self.con.cursor()
+            date = date.strftime(database_date_format)
+            cur.execute(insert_into_meal_history, (user_id, meal_item_id, date, meal))
+
+        cur.close()
         self.con.commit()
 
     def get_meal_statistics(self):
