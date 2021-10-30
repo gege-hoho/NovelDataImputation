@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime
 import sqlite3
 
@@ -129,10 +130,11 @@ class SqliteConnector:
         self.con = sqlite3.connect(db_name)
         self.meal_item_storage = {}
         self.meal_item_storage_limit = max_cache_size
+        self.meal_item_storage_min = min_chache_size
         self.timer = Timer()
-        self.init_meal_item_storage(min_chache_size)
+        self.init_meal_item_storage()
 
-    def init_meal_item_storage(self, limit):
+    def init_meal_item_storage(self):
         """
         Init the meal_item_storage
         :param limit: Number of meal_items get from db at initialisation of cache
@@ -141,7 +143,7 @@ class SqliteConnector:
         logging.info("Meal item cache reset, refill with fresh db values")
         self.timer.tick()
         self.meal_item_storage = {}
-        meal_items = self.get_most_used_meal_item(limit)
+        meal_items = self.get_most_used_meal_item(self.meal_item_storage_min)
         for item in meal_items:
             self.meal_item_storage[item.name] = item
         self.timer.tock("Meal item cache reset done")
@@ -199,7 +201,7 @@ class SqliteConnector:
             cur = self.con.cursor()
             cur.execute(insert_into_meal_history, (user_id, meal_item_id, date, meal))
             cur.close()
-            self.con.commit()
+            self.commit()
         except sqlite3.IntegrityError as e:
             logging.error("Meal history %i, %i,%s, %s already exists", user_id, meal_item_id, date, meal)
             raise e
@@ -215,7 +217,7 @@ class SqliteConnector:
             if self.exists_user(username, cur_cursor=cur):
                 continue
             self.con.execute(insert_into_user, (username,)).close()
-        self.con.commit()
+        self.commit()
         cur.close()
 
     def create_meal_statistic(self, user: User, time, entries):
@@ -230,7 +232,7 @@ class SqliteConnector:
         """
         cur = self.con.cursor()
         self.con.execute(insert_into_meal_statistics, (user.id, time, entries)).close()
-        self.con.commit()
+        self.commit()
         cur.close()
 
     def create_meal_item(self, data):
@@ -245,7 +247,7 @@ class SqliteConnector:
                      data['carbs'], data['fat'], data['protein'],
                      data['cholest'], data['sodium'], data['sugars'], data['fiber'])
         self.con.execute(insert_into_meal_item, user_data).close()
-        self.con.commit()
+        self.commit()
         return self.get_meal_item(data)
 
     def create_meal_item_bulk(self, data_list):
@@ -259,7 +261,7 @@ class SqliteConnector:
         for i, data in enumerate(data_list):
             if i % max_bulk_insert == 0:
                 cur.close()
-                self.con.commit()
+                self.commit()
                 cur = self.con.cursor()
             quick_add, name = _translate_quick_add(data)
             if name in name_list:
@@ -271,7 +273,7 @@ class SqliteConnector:
             cur.execute(insert_into_meal_item, user_data)
 
         cur.close()
-        self.con.commit()
+        self.commit()
 
     def create_meal_history_bulk(self, data_list):
         """
@@ -283,13 +285,13 @@ class SqliteConnector:
         for i, (user_id, meal_item_id, date, meal) in enumerate(data_list):
             if i % max_bulk_insert == 0:
                 cur.close()
-                self.con.commit()
+                self.commit()
                 cur = self.con.cursor()
             date = date.strftime(database_date_format)
             cur.execute(insert_into_meal_history, (user_id, meal_item_id, date, meal))
 
         cur.close()
-        self.con.commit()
+        self.commit()
 
     def get_meal_statistics(self):
         """
@@ -455,7 +457,7 @@ class SqliteConnector:
             user.gender, user.location, joined_date, food_crawl_time,
             friends_crawl_time, profile_crawl_time, user.has_public_diary, user.age, user.id)
         self.con.execute(update_user, user_data).close()
-        self.con.commit()
+        self.commit()
 
     def delete_meal_history_for_user(self, user):
         """
@@ -465,4 +467,14 @@ class SqliteConnector:
         """
         logging.warning("Delete meal history for %s", user.username)
         self.con.execute(delete_meal_history_by_user, (user.id,)).close()
-        self.con.commit()
+        self.commit()
+
+    def commit(self):
+        for i in range(5):
+            try:
+                self.con.commit()
+                return
+            except sqlite3.OperationalError as e:
+                logging.warning(e)
+                logging.warning("Retry %i, Sleeping for 3 seconds and then retry",i)
+                time.sleep(3)
