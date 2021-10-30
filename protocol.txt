@@ -82,6 +82,8 @@ Oct 28:
 
 Oct 29:
 -Try flat adding of diaries instead of normalized for speed gains
+-Didn't work
+-Added bulk adding for meal_history and meal_items (100x speed gain)
 
 Size Difference between flat and normalized add for meal_history for same data:
 

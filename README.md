@@ -11,3 +11,5 @@
 * `log-level`: one of python logging log levels e.g. INFO or DEBUG
 * `crawler-timeout`: maximum wait time in seconds for a request made by the crawler
 * `crawler-max-retries`: maximum time of retrying if a request timeout before exiting
+* `database-max-cache`: maximum number of entries in meal item cache, the larger the number the more RAM is consumed
+* `database-backup-time`: time interval in hours at which backups from the database will be created

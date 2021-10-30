@@ -47,6 +47,8 @@ def check_config_integrity(config):
     c.check_str('log-level')
     c.check_int('crawler-timeout')
     c.check_int('crawler-max-retries')
+    c.check_int('database-backup-time')
+    c.check_int('database-max-cache')
 
 
 def check_secret_config_integrity(config):
@@ -90,7 +92,9 @@ class Main:
         self.crawler = MyFitnessPalCrawler(secret_config["email"], secret_config["password"],
                                            config["friend-page-limit"], config['crawler-timeout'],
                                            config["crawler-max-retries"])
-        self.db = SqliteConnector(config["database-path"])
+        max_cache = config["database-max-cache"]
+        min_cache = max_cache/4
+        self.db = SqliteConnector(config["database-path"], max_cache, min_cache)
 
         self.mode = config['mode']
         self.test_users = []
@@ -109,7 +113,7 @@ class Main:
         # init the events
         self.event_queue = EventController()
         re_login_event = Event(relogin_callback, hour=1, args=[self.crawler], instant=False)
-        save_db_event = Event(save_db_callback, hour=8, args=[config["database-path"],
+        save_db_event = Event(save_db_callback, hour=config["database-backup-time"], args=[config["database-path"],
                                                               config["database-backup-folder"]])
         self.event_queue.add_event(re_login_event)
         self.event_queue.add_event(save_db_event)
@@ -238,12 +242,6 @@ class Main:
                 meal_history.append((curr_user.id, db_item.id, crawler_item['date'], crawler_item['meal']))
             self.db.create_meal_history_bulk(meal_history)
 
-            #for diary_entry in diary:
-            #    #self.db.create_meal_history_flat(diary_entry, curr_user)
-            #    item = self.db.get_meal_item(diary_entry['item'])
-            #    if not item:
-            #        item = self.db.create_meal_item(diary_entry['item'])
-            #    self.db.create_meal_history(curr_user.id, item.id, diary_entry['date'], diary_entry['meal'])
             delta = self.timer.tock("Database write")
 
             if self.sleep_time_diary - delta > 0:

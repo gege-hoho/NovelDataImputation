@@ -3,6 +3,8 @@ from datetime import datetime
 import sqlite3
 
 # datetime formats used in database
+from helper.timer import Timer
+
 database_date_time_format = '%d-%m-%y %H:%M:%S'
 # date format used in database
 database_date_format = '%d-%m-%y'
@@ -29,9 +31,13 @@ select_count_user_profile_crawled = "select count(*) from user where profile_cra
 select_count_user_public_diary = "select count(*) from user where has_public_diary = 1"
 select_all_meal_items = "select * from meal_item order by name DESC limit ?"
 
+get_most_used_meal_item = "select  mi.* from meal_history mh, meal_item mi where mi.meal_item = mh.meal_item " \
+                          "group by mh.meal_item order by count(mh.meal_item)DESC limit ?"
+
 delete_meal_history_by_user = "delete from meal_history where user = ?"
 
 max_bulk_insert = 299
+
 
 class User:
     __slots__ = 'id', 'username', 'gender', 'location', 'joined_date', \
@@ -111,14 +117,34 @@ def _translate_quick_add(data):
 
 
 class SqliteConnector:
-    def __init__(self, db_name):
+    def __init__(self, db_name, max_cache_size, min_chache_size):
         """
-
+        :param min_chache_size: Number of meal_items get from db at initialisation of cache
+        :type min_chache_size: int
+        :param max_cache_size: Number at which the cache of meal_items will be emptied
+        :type max_cache_size: int
         :param db_name: database used in the Sqlite connector
         :type db_name: str
         """
         self.con = sqlite3.connect(db_name)
         self.meal_item_storage = {}
+        self.meal_item_storage_limit = max_cache_size
+        self.timer = Timer()
+        self.init_meal_item_storage(min_chache_size)
+
+    def init_meal_item_storage(self, limit):
+        """
+        Init the meal_item_storage
+        :param limit: Number of meal_items get from db at initialisation of cache
+        :type limit: int
+        """
+        logging.info("Meal item cache reset, refill with fresh db values")
+        self.timer.tick()
+        self.meal_item_storage = {}
+        meal_items = self.get_most_used_meal_item(limit)
+        for item in meal_items:
+            self.meal_item_storage[item.name] = item
+        self.timer.tock("Meal item cache reset done")
 
     def exists_user(self, username, cur_cursor=None):
         """
@@ -140,6 +166,21 @@ class SqliteConnector:
         if cur_created:
             cur_cursor.close()
         return res[0] != 0
+
+    def get_most_used_meal_item(self, limit):
+        """
+        Gets the top limit used meal items from db
+        :param limit: how many items at max
+        :type limit: int
+        :return: List of MealItems
+        :rtype: list
+        """
+        cur = self.con.cursor()
+        cur.execute(get_most_used_meal_item, (limit,))
+        result = cur.fetchall()
+        result = [MealItem(x) for x in result]
+        cur.close()
+        return result
 
     def create_meal_history(self, user_id, meal_item_id, date, meal):
         """
@@ -208,6 +249,11 @@ class SqliteConnector:
         return self.get_meal_item(data)
 
     def create_meal_item_bulk(self, data_list):
+        """
+        Creates meal items in the database in bulk
+        :param data_list: list from crawler.extract_food()['item']
+        :type data_list: list
+        """
         cur = self.con.cursor()
         name_list = []
         for i, data in enumerate(data_list):
@@ -228,6 +274,11 @@ class SqliteConnector:
         self.con.commit()
 
     def create_meal_history_bulk(self, data_list):
+        """
+        Creates meal history in the database in bulk
+        :param data_list: list of histories
+        :type data_list: list
+        """
         cur = self.con.cursor()
         for i, (user_id, meal_item_id, date, meal) in enumerate(data_list):
             if i % max_bulk_insert == 0:
@@ -241,6 +292,11 @@ class SqliteConnector:
         self.con.commit()
 
     def get_meal_statistics(self):
+        """
+        Gets statistics over the meal crawling from db and returns as dict
+        :return: statistics
+        :rtype: dict
+        """
         cur = self.con.cursor()
         cur.execute(select_meal_statistics)
         (avg_time, avg_entries) = cur.fetchone()
@@ -317,6 +373,8 @@ class SqliteConnector:
         cur.close()
         if res:
             res = MealItem(res)
+            if len(self.meal_item_storage) > self.meal_item_storage_limit:
+                self.init_meal_item_storage()
             self.meal_item_storage[name] = res
             return res
         return None
