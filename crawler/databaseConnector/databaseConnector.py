@@ -118,10 +118,10 @@ def _translate_quick_add(data):
 
 
 class SqliteConnector:
-    def __init__(self, db_name, max_cache_size, min_chache_size):
+    def __init__(self, db_name, max_cache_size, min_cache_size):
         """
-        :param min_chache_size: Number of meal_items get from db at initialisation of cache
-        :type min_chache_size: int
+        :param min_cache_size: Number of meal_items get from db at initialisation of cache
+        :type min_cache_size: int
         :param max_cache_size: Number at which the cache of meal_items will be emptied
         :type max_cache_size: int
         :param db_name: database used in the Sqlite connector
@@ -130,15 +130,13 @@ class SqliteConnector:
         self.con = sqlite3.connect(db_name)
         self.meal_item_storage = {}
         self.meal_item_storage_limit = max_cache_size
-        self.meal_item_storage_min = min_chache_size
+        self.meal_item_storage_min = min_cache_size
         self.timer = Timer()
         self.init_meal_item_storage()
 
     def init_meal_item_storage(self):
         """
         Init the meal_item_storage
-        :param limit: Number of meal_items get from db at initialisation of cache
-        :type limit: int
         """
         logging.info("Meal item cache reset, refill with fresh db values")
         self.timer.tick()
@@ -220,18 +218,18 @@ class SqliteConnector:
         self.commit()
         cur.close()
 
-    def create_meal_statistic(self, user: User, time, entries):
+    def create_meal_statistic(self, user: User, meal_time, entries):
         """
         Adds a statistic for the meal crawl of the user
         :param user: crawled user
         :type user: User
-        :param time: time it took to crawl the user
-        :type time: int
+        :param meal_time: time it took to crawl the user
+        :type meal_time: int
         :param entries: number of entries in diary
         :type entries: int
         """
         cur = self.con.cursor()
-        self.con.execute(insert_into_meal_statistics, (user.id, time, entries)).close()
+        self.con.execute(insert_into_meal_statistics, (user.id, meal_time, entries)).close()
         self.commit()
         cur.close()
 
@@ -383,7 +381,7 @@ class SqliteConnector:
 
     def get_uncrawled_friends_users(self):
         """
-        Get list of users who does not have their friendlist crawled
+        Get list of users who does not have their friend list crawled
         :return:
         :rtype: list of User
         """
@@ -476,5 +474,6 @@ class SqliteConnector:
                 return
             except sqlite3.OperationalError as e:
                 logging.warning(e)
-                logging.warning("Retry %i, Sleeping for 3 seconds and then retry",i)
+                logging.warning("Retry %i, Sleeping for 3 seconds and then retry", i)
                 time.sleep(3)
+        raise sqlite3.OperationalError()

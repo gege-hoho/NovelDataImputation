@@ -52,26 +52,3 @@ create table meal_statistics
     time    int,
     entries int
 );
-
-create table meal_history_flat
-(
-    meal_history_quick integer not null
-            primary key autoincrement,
-    date      text    not null,
-    meal      text    not null,
-    user      int
-        references user,
-    name      text not null,
-    quick_add int not null default 0,
-    calories  int,
-    carbs     int,
-    fat       int,
-    protein   int,
-    cholest   int,
-    sodium    int,
-    sugars    int,
-    fiber     int
-);
-create index meal_history_flat_index
-    on meal_history_flat (name);
-
