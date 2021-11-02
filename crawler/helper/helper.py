@@ -30,6 +30,24 @@ def convert_int(string):
     return x
 
 
+def isclose(a, b, rel_tol=0.2, abs_tol=0.5):
+    """
+    Check if two floats are close to each other based on a rel and absolute tolerance
+    https://stackoverflow.com/questions/5595425/what-is-the-best-way-to-compare-floats-for-almost-equality-in-python
+    :param a:
+    :type a: float
+    :param b:
+    :type b: float
+    :param rel_tol:
+    :type rel_tol: float
+    :param abs_tol:
+    :type abs_tol: float
+    :return: if they are close
+    :rtype: bool
+    """
+    return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
+
+
 def remove_text_inside_brackets(text, brackets="()[]"):
     """
     Found at: https://stackoverflow.com/questions/14596884/remove-text-between-and

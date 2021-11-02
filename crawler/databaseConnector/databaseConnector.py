@@ -25,8 +25,14 @@ get_meal_item = "select * from meal_item where name = ? and quick_add = ?"
 insert_into_meal_item = "insert into meal_item (name, quick_add, calories, carbs, fat, protein, " \
                         "cholest, sodium, sugars, fiber) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
+insert_into_meal_history_flat = "insert into meal_history_flat" \
+                                 "(date, meal, user, name, quick_add, calories, carbs, " \
+                                 "fat, protein, cholest, sodium, sugars, fiber) values " \
+                                 "(?,?,?,?,?,?,?,?,?,?,?,?,?)"
+
 insert_into_meal_history = "insert into meal_history (user, meal_item, date, meal) values (?, ?, ?, ?)"
 select_count_from_meal_history = "select count(*) from meal_history where user = ?"
+select_count_from_meal_history_flat = "select count(*) from meal_history_flat where user = ?"
 select_count_user = "select count(*) from user"
 select_count_user_profile_crawled = "select count(*) from user where profile_crawl_time is not null"
 select_count_user_public_diary = "select count(*) from user where has_public_diary = 1"
@@ -36,7 +42,7 @@ get_most_used_meal_item = "select  mi.* from meal_history mh, meal_item mi where
                           "group by mh.meal_item order by count(mh.meal_item)DESC limit ?"
 
 delete_meal_history_by_user = "delete from meal_history where user = ?"
-
+delete_meal_history_by_user_flat = "delete from meal_history_flat where user = ?"
 max_bulk_insert = 299
 
 
@@ -273,6 +279,29 @@ class SqliteConnector:
         cur.close()
         self.commit()
 
+    def create_meal_history_flat_bulk(self, history_data_list, user):
+        """
+        Creates meal history in the database in bulk
+        :param data_list: list of histories
+        :type data_list: list
+        """
+        cur = self.con.cursor()
+        for i, history_data in enumerate(history_data_list):
+            if i % max_bulk_insert == 0:
+                cur.close()
+                self.commit()
+                cur = self.con.cursor()
+            data = history_data['item']
+            quick_add, name = _translate_quick_add(data)
+            curr_date = history_data['date'].strftime(database_date_format)
+            user_data = (curr_date, history_data['meal'], user.id, name, quick_add, data['calories'],
+                         data['carbs'], data['fat'], data['protein'],
+                         data['cholest'], data['sodium'], data['sugars'], data['fiber'])
+            cur.execute(insert_into_meal_history_flat, user_data)
+
+        cur.close()
+        self.commit()
+
     def create_meal_history_bulk(self, data_list):
         """
         Creates meal history in the database in bulk
@@ -339,6 +368,20 @@ class SqliteConnector:
         """
         cur = self.con.cursor()
         cur.execute(select_count_from_meal_history, (user.id,))
+        (res,) = cur.fetchone()
+        cur.close()
+        return res
+
+    def get_number_meal_items_from_user_flat(self, user):
+        """
+
+        :param user:
+        :type user: User
+        :return: number of meal items already in DB for given user in the flat meal history
+        :rtype: int
+        """
+        cur = self.con.cursor()
+        cur.execute(select_count_from_meal_history_flat, (user.id,))
         (res,) = cur.fetchone()
         cur.close()
         return res
@@ -465,6 +508,16 @@ class SqliteConnector:
         """
         logging.warning("Delete meal history for %s", user.username)
         self.con.execute(delete_meal_history_by_user, (user.id,)).close()
+        self.commit()
+
+    def delete_meal_history_for_user_flat(self, user):
+        """
+
+        :param user: user for which meal history should be deleted
+        :type user: User
+        """
+        logging.warning("Delete meal history for %s", user.username)
+        self.con.execute(delete_meal_history_by_user_flat, (user.id,)).close()
         self.commit()
 
     def commit(self):

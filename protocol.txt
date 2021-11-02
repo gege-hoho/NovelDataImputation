@@ -85,6 +85,13 @@ Oct 29:
 -Didn't work
 -Added bulk adding for meal_history and meal_items (100x speed gain)
 
+Nov 1:
+-Again speed improvments for diary crawling
+-Trying to match items after extracting the portion size and unit
+-looking at openfoodfacts database extraction methods
+
+Nov 2:
+- Found out that somehow the nutrition values differs even if the name are matching, crawling flat from now on
 Size Difference between flat and normalized add for meal_history for same data:
 
 sqlite> SELECT SUM("pgsize") FROM "dbstat" WHERE name='meal_history' or name='meal_item';
@@ -96,8 +103,8 @@ sqlite> SELECT SUM("pgsize") FROM "dbstat" WHERE name='meal_history_flat';
 Known Problems:
 
 Todo:
+handle too big values for cals etc like shanmiko on April 8 2018
 build different log level for file and print
-check what happens if you enter the same meal history twice? does it break
 
 Links:
 https://platinmods.com/threads/how-to-fix-apktool-decompile-error-using-mt-manager-app-arscdecoder-error.121708/

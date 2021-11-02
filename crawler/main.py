@@ -93,8 +93,9 @@ class Main:
                                            config["friend-page-limit"], config['crawler-timeout'],
                                            config["crawler-max-retries"])
         max_cache = config["database-max-cache"]
-        min_cache = max_cache/4
-        self.db = SqliteConnector(config["database-path"], max_cache, min_cache)
+        min_cache = max_cache / 4
+        #self.db = SqliteConnector(config["database-path"], max_cache, min_cache)
+        self.db = SqliteConnector(config["database-path"], 0, 0)
 
         self.mode = config['mode']
         self.test_users = []
@@ -114,7 +115,8 @@ class Main:
         self.event_queue = EventController()
         re_login_event = Event(relogin_callback, hour=1, args=[self.crawler], instant=False)
         save_db_event = Event(save_db_callback, hour=config["database-backup-time"], args=[config["database-path"],
-                                                              config["database-backup-folder"]])
+                                                                                           config[
+                                                                                               "database-backup-folder"]])
         self.event_queue.add_event(re_login_event)
         self.event_queue.add_event(save_db_event)
 
@@ -188,6 +190,7 @@ class Main:
 
         # check if there is already something for the user
         number_of_saved_meal_items = self.db.get_number_meal_items_from_user(curr_user)
+        number_of_saved_meal_items += self.db.get_number_meal_items_from_user_flat(curr_user)
         if number_of_saved_meal_items > 0:
             logging.warning("There is already a meal history for the user,... skipping")
             self.users_with_problems.append(curr_user)
@@ -230,18 +233,28 @@ class Main:
             # put in database
             logging.info("insert %i diary entries of %s in database", len(diary), curr_user.username)
             self.timer.tick()
+            """
             items = [(self.db.get_meal_item(x['item']), x) for x in diary]
             items_filtered = [y['item'] for (x, y) in items if x is None]
-            #create
+            # create
             self.db.create_meal_item_bulk(items_filtered)
 
             meal_history = []
+            attr_list = ['calories', 'carbs', 'fat', 'protein', 'cholest', 'sodium', 'sugar', 'fiber']
             for (db_item, crawler_item) in items:
                 if db_item is None:
                     db_item = self.db.get_meal_item(crawler_item['item'])
+                for attr in attr_list:
+                    curr_attr_db = getattr(db_item, attr)
+                    attr = attr if attr != 'sugar' else 'sugars'
+                    if crawler_item['item'][attr] != curr_attr_db:
+                        logging.error("Somehow for %s attr %s does not match between db and diary %i, %i",
+                                      crawler_item['item']['name'], attr, crawler_item['item'][attr], curr_attr_db)
+
                 meal_history.append((curr_user.id, db_item.id, crawler_item['date'], crawler_item['meal']))
             self.db.create_meal_history_bulk(meal_history)
-
+            """
+            self.db.create_meal_history_flat_bulk(diary, curr_user)
             delta = self.timer.tock("Database write")
 
             if self.sleep_time_diary - delta > 0:
@@ -252,7 +265,8 @@ class Main:
         meal_statistics = self.db.get_meal_statistics()
         crawl_time = self.timer.tock_s()
         logging.info(f"Crawling of %s took %.2f with %i items", curr_user.username, crawl_time, no_of_entries)
-        logging.info(f"On average takes crawling %.2f with %i items", meal_statistics['avg-time'], meal_statistics['avg-entries'])
+        logging.info(f"On average takes crawling %.2f with %i items", meal_statistics['avg-time'],
+                     meal_statistics['avg-entries'])
         self.db.create_meal_statistic(curr_user, crawl_time, no_of_entries)
         return curr_user
 
@@ -284,6 +298,7 @@ class Main:
             if self.mode == mode_diaries_test:
                 # delete old diary entry
                 self.db.delete_meal_history_for_user(curr_user)
+                self.db.delete_meal_history_for_user_flat(curr_user)
                 curr_user.food_crawl_time = None
                 self.db.save_user(curr_user)
                 # crawl new diary
