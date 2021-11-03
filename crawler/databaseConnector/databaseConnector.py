@@ -26,9 +26,9 @@ insert_into_meal_item = "insert into meal_item (name, quick_add, calories, carbs
                         "cholest, sodium, sugars, fiber) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 insert_into_meal_history_flat = "insert into meal_history_flat" \
-                                 "(date, meal, user, name, quick_add, calories, carbs, " \
-                                 "fat, protein, cholest, sodium, sugars, fiber) values " \
-                                 "(?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                                "(date, meal, user, name, quick_add, calories, carbs, " \
+                                "fat, protein, cholest, sodium, sugars, fiber) values " \
+                                "(?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
 insert_into_meal_history = "insert into meal_history (user, meal_item, date, meal) values (?, ?, ?, ?)"
 select_count_from_meal_history = "select count(*) from meal_history where user = ?"
@@ -279,6 +279,20 @@ class SqliteConnector:
         cur.close()
         self.commit()
 
+    def check_data_reasonable(self, data):
+        """
+        Checks if the provided meal_history_data contains values over 1000000
+        :param data:
+        :type data: dict
+        :return:
+        :rtype:
+        """
+        for k, x in data.items():
+            if type(x) is int and abs(x) > 1000000:
+                logging.warning("%s is larger than 1000000: %i", k, x)
+                return False
+        return True
+
     def create_meal_history_flat_bulk(self, history_data_list, user):
         """
         Creates meal history in the database in bulk
@@ -293,6 +307,9 @@ class SqliteConnector:
                 cur = self.con.cursor()
             data = history_data['item']
             quick_add, name = _translate_quick_add(data)
+            if not self.check_data_reasonable(data):
+                # skip to large data to avoid SQLLimits.
+                continue
             curr_date = history_data['date'].strftime(database_date_format)
             user_data = (curr_date, history_data['meal'], user.id, name, quick_add, data['calories'],
                          data['carbs'], data['fat'], data['protein'],

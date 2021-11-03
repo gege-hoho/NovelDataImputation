@@ -5,6 +5,7 @@ Created on Wed Sep  8 08:49:48 2021
 
 @author: gregor
 """
+import time
 
 import requests
 from requests.exceptions import Timeout
@@ -131,6 +132,17 @@ class MyFitnessPalCrawler:
                 logging.warning("Timeout during request at %s retry %i out of %i", endpoint, i, self.max_retries)
                 if i == self.max_retries:
                     return callback(t)
+            except ConnectionError as e:
+                i += 1
+                logging.warning("Connection error %s", e)
+                time.sleep(1)
+                self.session = requests.Session()
+                self.login()
+                if i == self.max_retries:
+                    return callback(e)
+
+
+
 
     def post(self, endpoint, payload, callback=error_callback):
         """
@@ -161,6 +173,14 @@ class MyFitnessPalCrawler:
                 logging.warning("Timeout during request at %s retry %i out of %i", endpoint, i, self.max_retries)
                 if i == self.max_retries:
                     return callback(t)
+            except ConnectionError as e:
+                i += 1
+                logging.warning("Connection error %s", e)
+                time.sleep(1)
+                self.session = requests.Session()
+                self.login()
+                if i == self.max_retries:
+                    return callback(e)
 
     def login(self):
         """
