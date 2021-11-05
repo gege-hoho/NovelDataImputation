@@ -25,6 +25,8 @@ get_meal_item = "select * from meal_item where name = ? and quick_add = ?"
 insert_into_meal_item = "insert into meal_item (name, quick_add, calories, carbs, fat, protein, " \
                         "cholest, sodium, sugars, fiber) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
+get_meal_history_flat_by_user = "select * from meal_history_flat where user = ?"
+
 insert_into_meal_history_flat = "insert into meal_history_flat" \
                                 "(date, meal, user, name, quick_add, calories, carbs, " \
                                 "fat, protein, cholest, sodium, sugars, fiber) values " \
@@ -69,6 +71,13 @@ class User:
         if isinstance(other, User):
             return self.id == other.id and self.username == other.username
 
+    def __repr__(self):
+        s = "User: ["
+        for x in User.__slots__:
+            s += f"{x}: {getattr(self, x)} "
+        s += "]"
+        return s
+
 
 class MealItem:
     __slots__ = 'id', 'name', 'quick_add', 'calories', 'carbs', 'fat', 'protein', 'cholest', 'sodium', 'sugar', 'fiber'
@@ -88,6 +97,43 @@ class MealItem:
         self.sugar = meal_data[9]
         self.fiber = meal_data[10]
 
+    def __repr__(self):
+        s = "MealItem: ["
+        for x in MealItem.__slots__:
+            s += f"{x}: {getattr(self, x)} "
+        s += "]"
+        return s
+
+
+class MealHistoryFlat:
+    __slots__ = 'id', 'date', 'meal', 'user', 'name', 'quick_add', 'calories', \
+                'carbs', 'fat', 'protein', 'cholest', 'sodium', 'sugar', 'fiber'
+
+    def __init__(self, meal_data):
+        if len(meal_data) != 14:
+            raise Exception("length mismatch")
+        self.id = meal_data[0]
+        self.date = meal_data[1]
+        self.meal = meal_data[2]
+        self.user = meal_data[3]
+        self.name = meal_data[4]
+        self.quick_add = meal_data[5]
+        self.calories = meal_data[6]
+        self.carbs = meal_data[7]
+        self.fat = meal_data[8]
+        self.protein = meal_data[9]
+        self.cholest = meal_data[10]
+        self.sodium = meal_data[11]
+        self.sugar = meal_data[12]
+        self.fiber = meal_data[13]
+
+    def __repr__(self):
+        s = "MealHistoryFlat: ["
+        for x in MealHistoryFlat.__slots__:
+            s += f"{x}: {getattr(self, x)} "
+        s += "]"
+        return s
+
 
 class MealHistory:
     __slots__ = 'user', 'meal_item', 'date', 'meal'
@@ -99,6 +145,13 @@ class MealHistory:
         self.meal_item = meal_history_data[1]
         self.date = meal_history_data[2]
         self.meal = meal_history_data[3]
+
+    def __repr__(self):
+        s = "MealHistory: ["
+        for x in MealHistory.__slots__:
+            s += f"{x}: {getattr(self, x)} "
+        s += "]"
+        return s
 
 
 def _translate_quick_add(data):
@@ -124,7 +177,7 @@ def _translate_quick_add(data):
 
 
 class SqliteConnector:
-    def __init__(self, db_name, max_cache_size, min_cache_size):
+    def __init__(self, db_name, max_cache_size=50000, min_cache_size=0):
         """
         :param min_cache_size: Number of meal_items get from db at initialisation of cache
         :type min_cache_size: int
@@ -296,8 +349,10 @@ class SqliteConnector:
     def create_meal_history_flat_bulk(self, history_data_list, user):
         """
         Creates meal history in the database in bulk
-        :param data_list: list of histories
-        :type data_list: list
+        :param history_data_list: list of histories
+        :type history_data_list: list
+        :param user: User
+        :type user: User
         """
         cur = self.con.cursor()
         for i, history_data in enumerate(history_data_list):
@@ -413,6 +468,21 @@ class SqliteConnector:
         cur.execute(select_all_meal_items, (limit,))
         res = cur.fetchall()
         res = [MealItem(x) for x in res]
+        cur.close()
+        return res
+
+    def get_meal_history_flat_by_user(self, user):
+        """
+        Get all meal history flat from database
+        :param user:
+        :type user: User
+        :return:
+        :rtype: [MealHistoryFlat]
+        """
+        cur = self.con.cursor()
+        cur.execute(get_meal_history_flat_by_user, (user.id,))
+        res = cur.fetchall()
+        res = [MealHistoryFlat(x) for x in res]
         cur.close()
         return res
 

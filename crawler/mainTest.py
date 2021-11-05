@@ -12,24 +12,6 @@ logging.basicConfig(format='%(levelname)s: %(asctime)s - %(message)s',
                     level=logging.getLevelName("DEBUG"))
 attr_list = ['calories', 'carbs', 'fat', 'protein', 'cholest', 'sodium', 'sugar', 'fiber']
 
-
-def detector(string):
-    string = string.split(' ', 1)
-    number = convert_int(string[0])
-    # if this doesn't work try with eval e.g for 5/3
-    if number is None:
-        try:
-            number = eval(string[0])
-        except:
-            return None
-        if type(number) not in (int, float):
-            return None
-    unit = None
-    if len(string) == 2:
-        unit = string[1]
-    return number, unit
-
-
 def both_or_no_one_none(a, b):
     return (a is None and b is None) or (a is not None and b is not None)
 
@@ -56,19 +38,6 @@ def compare_with_multiplier(multiplier, reference: MealItem, compare_list: [(int
             else:
                 logging.info("Not possible to match %s for %s because one is None", reference.name, attr)
                 return False
-
-
-def get_unit_from_item_name(name):
-    name_split = name.split(', ')
-    curr = ""
-    for split in reversed(name_split):
-
-        curr = split if curr == "" else split + ', ' + curr
-        result = detector(curr)
-        if result is not None:
-            return name.rstrip(curr).rstrip(','), result
-    return name, (None, None)
-
 
 config = read_json("config.json")
 db = SqliteConnector(config["database-path"], 0, 0)

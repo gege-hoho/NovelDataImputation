@@ -2,3 +2,4 @@ secret.json
 *.db
 *.log
 client_secrets.json
+preProcessor/data/*

@@ -73,3 +73,44 @@ def remove_text_inside_brackets(text, brackets="()[]"):
             if not any(count):  # outside brackets
                 saved_chars.append(character)
     return ''.join(saved_chars)
+
+
+def get_unit_from_item_name(name):
+    """
+    Converts a meal name from myfittnesspal of the form Brand - Name, unit into its part
+    :param name:
+    :type name:
+    :return:
+    :rtype:
+    """
+    def unit_detector(string):
+        string = string.split(' ', 1)
+        number = convert_int(string[0])
+        # if this doesn't work try with eval e.g for 5/3
+        if number is None:
+            try:
+                number = eval(string[0])
+            except:
+                return None, None
+            if type(number) not in (int, float):
+                return None, None
+        unit = None
+        if len(string) == 2:
+            unit = string[1]
+        return number, unit
+
+    name_split = name.split(', ')
+    curr = ""
+    amt, units = None, None
+    for split in reversed(name_split):
+
+        curr = split if curr == "" else split + ', ' + curr
+        result = unit_detector(curr)
+        if result is not None:
+            amt, units = result
+            name = name.rstrip(curr).rstrip(',')
+            break
+    name_split = name.split(' - ', 1)
+    if len(name_split) == 2:
+        return name_split[1], name_split[0], amt, units
+    return name, None, amt, units
