@@ -1,0 +1,59 @@
+Protocol preProcessor:
+
+Idea Categorize the crawled items into different food categories
+Solution: 
+1.based on substrings as in paper by igmar weber
+2.based on substrings with categories from wikidata
+3.neural network that is learned on USDA food database categories
+
+
+1:
+Works nearly out of the box
+
+2.
+matching is easy but gathering the correct categories, hard manual labor
+
+3.
+Things done:
+First Version
+	Did a preprocessing pipeline with tokenization and lemmatization
+	Used embedding from "A word embedding-based method for unsupervised adaptation of 		cooking recipes"
+	Model: simple FeedForwardModel
+	Input: the mean of all embddings (max 10)
+	Output: 173 classes from usda
+	COns: embedding missed alot of items, no bigrams detected
+Second Version:
+	Preprocessing with tokenization, lemmatization, bigram detection
+	Word2Vec embedding trained on USDA data, BigramDetector trained on USDA data
+	Model: simple FeedForwardModel, experimented with dropout etc.
+	Input: mean of all embeddings max 10
+	Output: 173 classes form usda (originally 300 removed classes with less than 100 items
+	Cons: problems with complicated stuff like red bull sugar free. It thinks that it is a 	chewing gum because of sugar free
+Third Version:
+	Preprocessing with tokenization, lemmatization, bigram detection
+	Word2Vec embedding trained on USDA data, BigramDetector trained on USDA data
+	Model: FeedForwardModel
+	Input: mean of all embeddings max 10
+	Output: 108 classes adapted form usda (removed classes with less than 100 entries, 		merged similar classes, removed uneccessary classes
+	Improvments: better performance on the crawled data
+	Cons: as last time
+Fourth Version:
+	Description: smaller CNN with 3 filters from Paper: Convolutional Neural Network for Sentence Classification
+	Preprocessing with tokenization, lemmatization, bigram detection
+	Word2Vec embedding trained on USDA data, BigramDetector trained on USDA data
+	Model: CNN
+	Input: 10,300 first 10 embedding
+	Output: 108 classes adapted form usda (removed classes with less than 100 entries, 		merged similar classes, removed uneccessary classes
+	Improvments: better performance on the crawled data, detects complicated stuff more 		reliable
+Fourth Version:
+	Description: larger CNN with 4 filters from Paper: Convolutional Neural Network for 		Sentence Classification
+	Preprocessing with tokenization, lemmatization, bigram detection
+	Word2Vec embedding trained on USDA data, BigramDetector trained on USDA data
+	Model: CNN
+	Input: 10,300 first 10 embedding
+	Output: 108 classes adapted form usda (removed classes with less than 100 entries, 		merged similar classes, removed uneccessary classes
+	Improvments: better performance on the crawled data, detects complicated stuff more 		reliable
+	
+	
+
+
