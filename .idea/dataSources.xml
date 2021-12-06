@@ -8,12 +8,17 @@
       <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/crawler/databaseConnector/mfp.db</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
-    <data-source source="LOCAL" name="21100930mfp.db" uuid="b5f0a293-6ae9-48a5-b62a-ee15db11b7a7">
+    <data-source source="LOCAL" name="out" uuid="fd48ee32-1b5f-4e80-91f2-1eb62e196f88">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:$USER_HOME$/21100930mfp.db</jdbc-url>
+      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/foodrescue-content-0.3/scripts/out.db</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
+      <libraries>
+        <library>
+          <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/Xerial SQLiteJDBC/3.34.0/sqlite-jdbc-3.34.0.jar</url>
+        </library>
+      </libraries>
     </data-source>
   </component>
 </project>

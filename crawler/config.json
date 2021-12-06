@@ -1,10 +1,14 @@
 {
   "database-path": "databaseConnector/mfp.db",
-  "initial-users": ["Theo166","clemrn73","Crossfitdad71","gegehoho"],
-  "mode": "diaries",
+  "database-backup-folder": "databaseBackups/",
+  "initial-users": ["NermalAndOdie"],
+  "mode": "diaries-test",
   "friend-page-limit": 100,
-  "sleep-time": 2,
+  "sleep-time-diary": 0.5,
+  "sleep-time-profile": 0.2,
   "log-level": "DEBUG",
   "crawler-timeout": 10,
-  "crawler-max-retries": 5
+  "crawler-max-retries": 5,
+  "database-backup-time": 24,
+  "database-max-cache": 2000000
 }
