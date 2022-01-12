@@ -35,22 +35,6 @@ create table meal_item
 create unique index meal_item_name_quickadd_uindex
     on meal_item (name, quick_add);
 
-create table meal_history
-(
-    user      integer not null
-        references user,
-    meal_item integer not null
-        references meal_item,
-    date      text    not null,
-    meal      text    not null
-);
-
-create index meal_history_user_index
-	on meal_history (user);
-
-create index meal_history_meal_item_index
-	on meal_history (meal_item);
-
 create table meal_statistics
 (
     user    int
@@ -83,4 +67,7 @@ create index meal_history_flat_index
 
 create index meal_history_flat_user_index
     on meal_history_flat (user);
+
+create index meal_history_flat_date_index
+    on meal_history_flat (date);
 

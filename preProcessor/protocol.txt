@@ -53,6 +53,11 @@ Fourth Version:
 	Input: 10,300 first 10 embedding
 	Output: 108 classes adapted form usda (removed classes with less than 100 entries, 		merged similar classes, removed uneccessary classes
 	Improvments: better performance on the crawled data, detects complicated stuff more 		reliable
+
+
+select count(meal) from meal_history_flat where meal = 'breakfast' or meal = 'lunch' or meal = 'dinner' or meal = 'snacks' --80958200
+select max(meal_history_quick) from meal_history_flat --120918696
+--67% of entries are in the "normal" config
 	
 	
 

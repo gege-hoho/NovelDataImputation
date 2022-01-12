@@ -16,14 +16,12 @@ select_meal_statistics = "select avg(time), avg(entries) from meal_statistics"
 select_uncrawled_friends_users = "select * from user where friends_crawl_time is NULL"
 select_uncrawled_diaries_users = "select * from user where has_public_diary = 1 and food_crawl_time is NULL"
 select_uncrawled_profile_users = "select * from user where profile_crawl_time is Null"
+select_all_users_with_location = "select * from user where location is not null"
 select_users_by_username = "select * from user where username = ?"
 update_user = "update user set gender = ?, location = ?, joined_date = ?," \
               "food_crawl_time = ?, friends_crawl_time = ?, profile_crawl_time = ?," \
               "has_public_diary = ?, age = ? where user = ?  "
 does_user_exist = "select count(*) from user where username = ?"
-get_meal_item = "select * from meal_item where name = ? and quick_add = ?"
-insert_into_meal_item = "insert into meal_item (name, quick_add, calories, carbs, fat, protein, " \
-                        "cholest, sodium, sugars, fiber) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 get_meal_history_flat_by_user = "select * from meal_history_flat where user = ?"
 
@@ -32,13 +30,10 @@ insert_into_meal_history_flat = "insert into meal_history_flat" \
                                 "fat, protein, cholest, sodium, sugars, fiber) values " \
                                 "(?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
-insert_into_meal_history = "insert into meal_history (user, meal_item, date, meal) values (?, ?, ?, ?)"
-select_count_from_meal_history = "select count(*) from meal_history where user = ?"
 select_count_from_meal_history_flat = "select count(*) from meal_history_flat where user = ?"
 select_count_user = "select count(*) from user"
 select_count_user_profile_crawled = "select count(*) from user where profile_crawl_time is not null"
 select_count_user_public_diary = "select count(*) from user where has_public_diary = 1"
-select_all_meal_items = "select * from meal_item order by name DESC limit ?"
 
 get_most_used_meal_item = "select  mi.* from meal_history mh, meal_item mi where mi.meal_item = mh.meal_item " \
                           "group by mh.meal_item order by count(mh.meal_item)DESC limit ?"
@@ -177,33 +172,13 @@ def _translate_quick_add(data):
 
 
 class SqliteConnector:
-    def __init__(self, db_name, max_cache_size=50000, min_cache_size=0):
+    def __init__(self, db_name):
         """
-        :param min_cache_size: Number of meal_items get from db at initialisation of cache
-        :type min_cache_size: int
-        :param max_cache_size: Number at which the cache of meal_items will be emptied
-        :type max_cache_size: int
         :param db_name: database used in the Sqlite connector
         :type db_name: str
         """
         self.con = sqlite3.connect(db_name)
-        self.meal_item_storage = {}
-        self.meal_item_storage_limit = max_cache_size
-        self.meal_item_storage_min = min_cache_size
         self.timer = Timer()
-        self.init_meal_item_storage()
-
-    def init_meal_item_storage(self):
-        """
-        Init the meal_item_storage
-        """
-        logging.info("Meal item cache reset, refill with fresh db values")
-        self.timer.tick()
-        self.meal_item_storage = {}
-        meal_items = self.get_most_used_meal_item(self.meal_item_storage_min)
-        for item in meal_items:
-            self.meal_item_storage[item.name] = item
-        self.timer.tock("Meal item cache reset done")
 
     def exists_user(self, username, cur_cursor=None):
         """
@@ -241,28 +216,6 @@ class SqliteConnector:
         cur.close()
         return result
 
-    def create_meal_history(self, user_id, meal_item_id, date, meal):
-        """
-        Creates a meal history for a user
-        :param user_id:
-        :type user_id: int
-        :param meal_item_id:
-        :type meal_item_id: int
-        :param date: date of consumption
-        :type date: datetime.datetime.date
-        :param meal: b for breakfast, l lunch, d dinner, u unknown
-        :type meal: str
-        """
-        date = date.strftime(database_date_format)
-        try:
-            cur = self.con.cursor()
-            cur.execute(insert_into_meal_history, (user_id, meal_item_id, date, meal))
-            cur.close()
-            self.commit()
-        except sqlite3.IntegrityError as e:
-            logging.error("Meal history %i, %i,%s, %s already exists", user_id, meal_item_id, date, meal)
-            raise e
-
     def create_users(self, usernames):
         """
         Adds a bunch of crawled users to the Database
@@ -291,46 +244,6 @@ class SqliteConnector:
         self.con.execute(insert_into_meal_statistics, (user.id, meal_time, entries)).close()
         self.commit()
         cur.close()
-
-    def create_meal_item(self, data):
-        """
-        Creates an meal item in the database
-        :param data: as from crawler.extract_food()['item']
-        :type data: dict
-        """
-        # handle the MFP Quick Add functionality bc, the name has to be unique
-        quick_add, name = _translate_quick_add(data)
-        user_data = (name, quick_add, data['calories'],
-                     data['carbs'], data['fat'], data['protein'],
-                     data['cholest'], data['sodium'], data['sugars'], data['fiber'])
-        self.con.execute(insert_into_meal_item, user_data).close()
-        self.commit()
-        return self.get_meal_item(data)
-
-    def create_meal_item_bulk(self, data_list):
-        """
-        Creates meal items in the database in bulk
-        :param data_list: list from crawler.extract_food()['item']
-        :type data_list: list
-        """
-        cur = self.con.cursor()
-        name_list = []
-        for i, data in enumerate(data_list):
-            if i % max_bulk_insert == 0:
-                cur.close()
-                self.commit()
-                cur = self.con.cursor()
-            quick_add, name = _translate_quick_add(data)
-            if name in name_list:
-                continue
-            name_list.append(name)
-            user_data = (name, quick_add, data['calories'],
-                         data['carbs'], data['fat'], data['protein'],
-                         data['cholest'], data['sodium'], data['sugars'], data['fiber'])
-            cur.execute(insert_into_meal_item, user_data)
-
-        cur.close()
-        self.commit()
 
     def check_data_reasonable(self, data):
         """
@@ -374,24 +287,6 @@ class SqliteConnector:
         cur.close()
         self.commit()
 
-    def create_meal_history_bulk(self, data_list):
-        """
-        Creates meal history in the database in bulk
-        :param data_list: list of histories
-        :type data_list: list
-        """
-        cur = self.con.cursor()
-        for i, (user_id, meal_item_id, date, meal) in enumerate(data_list):
-            if i % max_bulk_insert == 0:
-                cur.close()
-                self.commit()
-                cur = self.con.cursor()
-            date = date.strftime(database_date_format)
-            cur.execute(insert_into_meal_history, (user_id, meal_item_id, date, meal))
-
-        cur.close()
-        self.commit()
-
     def get_meal_statistics(self):
         """
         Gets statistics over the meal crawling from db and returns as dict
@@ -430,20 +325,6 @@ class SqliteConnector:
             "public-diary": count_public_diary
         }
 
-    def get_number_meal_items_from_user(self, user):
-        """
-
-        :param user:
-        :type user: User
-        :return: number of meal items already in DB for given user
-        :rtype: int
-        """
-        cur = self.con.cursor()
-        cur.execute(select_count_from_meal_history, (user.id,))
-        (res,) = cur.fetchone()
-        cur.close()
-        return res
-
     def get_number_meal_items_from_user_flat(self, user):
         """
 
@@ -455,19 +336,6 @@ class SqliteConnector:
         cur = self.con.cursor()
         cur.execute(select_count_from_meal_history_flat, (user.id,))
         (res,) = cur.fetchone()
-        cur.close()
-        return res
-
-    def get_meal_items_limited(self, limit=9999):
-        """
-        Get all meal items from database
-        :return:
-        :rtype:
-        """
-        cur = self.con.cursor()
-        cur.execute(select_all_meal_items, (limit,))
-        res = cur.fetchall()
-        res = [MealItem(x) for x in res]
         cur.close()
         return res
 
@@ -485,29 +353,6 @@ class SqliteConnector:
         res = [MealHistoryFlat(x) for x in res]
         cur.close()
         return res
-
-    def get_meal_item(self, data):
-        """
-        Gets a meal item if exists none otherwise
-        :param data: data: as from crawler.extract_food
-        :type data: dict
-        :return:
-        :rtype: MealItem
-        """
-        cur = self.con.cursor()
-        quick_add, name = _translate_quick_add(data)
-        if name in self.meal_item_storage.keys():
-            return self.meal_item_storage[name]
-        cur.execute(get_meal_item, (name, quick_add))
-        res = cur.fetchone()
-        cur.close()
-        if res:
-            res = MealItem(res)
-            if len(self.meal_item_storage) > self.meal_item_storage_limit:
-                self.init_meal_item_storage()
-            self.meal_item_storage[name] = res
-            return res
-        return None
 
     def get_uncrawled_friends_users(self):
         """
@@ -540,6 +385,18 @@ class SqliteConnector:
         :rtype: list of User
         """
         cur = self.con.execute(select_uncrawled_profile_users)
+        result = cur.fetchall()
+        result = [User(x) for x in result]
+        cur.close()
+        return result
+
+    def get_all_users_with_location(self):
+        """
+        Get list of users
+        :return:
+        :rtype: list of User
+        """
+        cur = self.con.execute(select_all_users_with_location)
         result = cur.fetchall()
         result = [User(x) for x in result]
         cur.close()

@@ -20,5 +20,12 @@
         </library>
       </libraries>
     </data-source>
+    <data-source source="LOCAL" name="Final" uuid="12ec43ea-6268-4b81-82ae-9aa0baf4f9f0">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/preProcessor/data/mfp.db</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>
