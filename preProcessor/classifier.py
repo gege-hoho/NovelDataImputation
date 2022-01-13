@@ -14,6 +14,118 @@ from gensim.models.phrases import Phrases, Phraser
 import nltk
 import numpy as np
 import re
+import time
+
+categories = ['Alcohol',
+ 'Bacon, Sausages & Ribs',
+ 'Biscuits/Cookies',
+ 'Bread',
+ 'Breakfast Drinks',
+ 'Breakfast Sandwiches, Biscuits & Meals',
+ 'Candy',
+ 'Canned & Bottled Beans',
+ 'Canned Fruit',
+ 'Cereal',
+ 'Cereal/Muesli Bars',
+ 'Cheese',
+ 'Cheese/Cheese Substitutes',
+ 'Chewing Gum & Mints',
+ 'Chips, Pretzels & Snacks',
+ 'Chocolate',
+ 'Coffee',
+ 'Coffee/Tea/Substitutes',
+ 'Cooked & Prepared',
+ 'Cookies & Biscuits',
+ 'Cream',
+ 'Crusts & Dough',
+ 'Deli Salads',
+ 'Desserts/Dessert Sauces/Toppings',
+ 'Dips & Salsa',
+ 'Eggs & Egg Substitutes',
+ 'Energy, Protein & Muscle Recovery Drinks',
+ 'Entrees, Sides & Small Meals',
+ 'Fish & Seafood',
+ 'Flavored Rice Dishes',
+ 'French Fries, Potatoes & Onion Rings',
+ 'Frozen Breakfast Sandwiches, Biscuits & Meals',
+ 'Frozen Dinners & Entrees',
+ 'Frozen Fruit & Fruit Juice Concentrates',
+ 'Fruit  Prepared/Processed',
+ 'Fruit & Vegetable Juice, Nectars & Fruit Drinks',
+ 'Gelatin, Gels, Pectins & Desserts',
+ 'Grain Based Products / Meals',
+ 'Granulated, Brown & Powdered Sugar',
+ 'Gravy Mix',
+ 'Green Supplements',
+ 'Health Care',
+ 'Herbs & Spices',
+ 'Honey',
+ 'Ice Cream & Frozen Yogurt',
+ 'Iced & Bottle Tea',
+ 'Jam, Jelly & Fruit Spreads',
+ 'Ketchup, Mustard, BBQ & Cheese Sauce',
+ 'Liquid Water Enhancer',
+ 'Lunch Snacks & Combinations',
+ 'Meal Replacement Supplements',
+ 'Mexican Dinner Mixes',
+ 'Milk',
+ 'Milk Additives',
+ 'Other Condiments',
+ 'Other Deli',
+ 'Other Drinks',
+ 'Other Frozen Desserts',
+ 'Other Grains & Seeds',
+ 'Pancakes, Waffles, French Toast & Crepes',
+ 'Pasta Dinners',
+ 'Pasta/Noodles',
+ 'Pastry Shells & Fillings',
+ 'Pepperoni, Salami & Cold Cuts',
+ 'Pickles, Olives, Peppers & Relishes',
+ 'Pizza',
+ 'Pizza Mixes & Other Dry Dinners',
+ 'Plant Based Milk',
+ 'Plant Based Water',
+ 'Powdered Drinks',
+ 'Pre-Packaged Fruit & Vegetables',
+ 'Prepared Pasta & Pizza Sauces',
+ 'Prepared Soups',
+ 'Prepared/Preserved Foods Variety Packs',
+ 'Puddings & Custards',
+ 'Ready-Made Combination Meals',
+ 'Rice',
+ 'Salad Dressing & Mayonnaise',
+ 'Sauces/Spreads/Dips/Condiments',
+ 'Savoury Bakery Products',
+ 'Seasoning Mixes, Salts, Marinades & Tenderizers',
+ 'Snack, Energy & Granola Bars',
+ 'Soda',
+ 'Specialty Formula Supplements',
+ 'Sport Drinks',
+ 'Stuffing',
+ 'Sushi',
+ 'Sweet Bakery Products',
+ 'Syrups & Molasses',
+ 'Tea Bags',
+ 'Vegetable Based Products / Meals',
+ 'Vegetable and Lentil Mixes',
+ 'Vegetarian Frozen Meats',
+ 'Water',
+ 'Weight Control',
+ 'Yogurt',
+ 'Yogurt/Yogurt Substitutes',
+ 'Baking',
+ 'Cakes',
+ 'Soup',
+ 'Oils & Butters',
+ 'Dough Based Products',
+ 'Flours & Grains',
+ 'Meat/Poultry/Other Animals',
+ 'Non Alcoholic Beverages',
+ 'Cooking Sauces',
+ 'Subs, Sandwiches, Wraps & Burittos',
+ 'Vegetables']
+
+print(__name__)
 
 class FoodClassificationCnnModel(torch.nn.Module):
   def __init__(self, no_of_classes,device,dropout=0.2):
@@ -83,19 +195,26 @@ class Classifier:
         self.lemmatizer = nltk.stem.wordnet.WordNetLemmatizer()
         
     def embedd(self,tokens):
-      embedding = np.zeros((10,self.embedding_size),dtype=float)
-      for i,token in enumerate(tokens[:10]):
-        if not(token == "" or token == " " or token not in self.embedding_model.wv):
-          embedding[i,:] = self.embedding_model.wv[token]
-      return torch.FloatTensor(embedding)
+        t0 = time.time()
+        embedding = np.zeros((10,self.embedding_size),dtype=float)
+        for i,token in enumerate(tokens[:10]):
+            if not(token == "" or token == " " or token not in self.embedding_model.wv):
+                embedding[i,:] = self.embedding_model.wv[token]
+        res = torch.FloatTensor(embedding)
+        #print(f"embedd:{time.time()-t0}")
+        return res
     
     def preprocess(self,name):
+        t0 = time.time()
         name = re.sub(r'[^\w\s]', '', str(name).lower().strip())
         name = self.tokenizer.tokenize(name)
-        return [self.lemmatizer.lemmatize(x) for x in name if x not in self.lst_stopwords and len(x)>2 and not any(char.isdigit() for char in x)]
-
+        res = [self.lemmatizer.lemmatize(x) for x in name if x not in self.lst_stopwords and len(x)>2 and not any(char.isdigit() for char in x)]
+        #print(f"preprocess:{time.time()-t0}")
+        return res
+    def get_cat_name(self,i):
+        return categories[i]
     def classify(self,word):
         x = self.embedd(self.bigram_model[self.preprocess(word)]).float()
         x = x.unsqueeze(0)
         z = self.model.forward(x)
-        return torch.argmax(torch.nn.Softmax()(z))
+        return torch.argmax(torch.nn.Softmax(dim=1)(z))
