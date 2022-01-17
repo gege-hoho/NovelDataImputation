@@ -22,6 +22,7 @@ for x in data:
 import pickle
 from classifier import categories
 import numpy as np
+import json
 
 len_x_t = 16
 
@@ -99,20 +100,24 @@ file = open('time_data.pickle', 'rb')
 data = pickle.load(file)
 file.close()
 
-
-series = data[0]
-evals = convert_series_to_brits(series)
-drop_meal_indices = [9,10]#np.random.choice(range(len(evals)),len(evals)//10)
-masks = np.ones((len(evals),len_x_t))
-eval_masks = np.zeros((len(evals),len_x_t))
-values = evals.copy()
-for index in drop_meal_indices:
-    values[index] = np.zeros(len_x_t)
-    masks[index] = np.zeros(len_x_t)
-    eval_masks[index] = np.ones(len_x_t)
-
-deltas = parse_delta(masks)
-deltas_back = parse_delta(masks,backward =True)
-
-forwards = convert_time_series(values,masks,deltas,evals,eval_masks)
-backwards = convert_time_series(values[::-1],masks[::-1],deltas_back,evals[::-1],eval_masks[::-1])
+file = open('brits_json.json',"w")
+for series in data:
+    series = data[0]
+    evals = convert_series_to_brits(series)
+    drop_meal_indices = np.random.choice(range(len(evals)),len(evals)//10)
+    masks = np.ones((len(evals),len_x_t))
+    eval_masks = np.zeros((len(evals),len_x_t))
+    values = evals.copy()
+    for index in drop_meal_indices:
+        values[index] = np.zeros(len_x_t)
+        masks[index] = np.zeros(len_x_t)
+        eval_masks[index] = np.ones(len_x_t)
+    
+    deltas = parse_delta(masks)
+    deltas_back = parse_delta(masks,backward =True)
+    
+    forwards = convert_time_series(values,masks,deltas,evals,eval_masks)
+    backwards = convert_time_series(values[::-1],masks[::-1],deltas_back,evals[::-1],eval_masks[::-1])
+    file.write(json.dumps({'forwards': forwards,'backwards': backwards}))
+    file.write('\n')
+file.close()
