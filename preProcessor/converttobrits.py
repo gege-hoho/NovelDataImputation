@@ -118,6 +118,6 @@ for series in data:
     
     forwards = convert_time_series(values,masks,deltas,evals,eval_masks)
     backwards = convert_time_series(values[::-1],masks[::-1],deltas_back,evals[::-1],eval_masks[::-1])
-    file.write(json.dumps({'forwards': forwards,'backwards': backwards}))
+    file.write(json.dumps({'forward': forwards,'backward': backwards}))
     file.write('\n')
 file.close()
