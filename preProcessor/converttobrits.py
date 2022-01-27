@@ -23,8 +23,26 @@ import pickle
 from classifier import categories
 import numpy as np
 import json
+import math
+import random
 
-len_x_t = 16
+len_x_t = 9
+
+def flatten(t):
+    return [item for sublist in t for item in sublist]
+
+file = open('time_data.pickle', 'rb')
+data = pickle.load(file)
+file.close()
+
+vals= ['calories','carbs','fat','protein','cholest','sodium','sugar','fiber']
+mean = {}
+std = {}
+for val in vals:
+    cals = np.array(flatten([[y[val] for y in x]for x in data]))
+    mean[val] = cals.mean()
+    std[val] = math.sqrt(cals.std())
+
 
 def parse_delta(masks, backward=False):
     if backward:
@@ -39,8 +57,11 @@ def parse_delta(masks, backward=False):
             deltas.append(np.ones(len_x_t) + (1 - masks[h]) * deltas[-1])
     return np.array(deltas)
 
+def convert_variable(curr_meal,var):
 
-def convert_meal_to_brits(curr_meal):
+    return (curr_meal[var]-mean[var])/std[var]
+
+def convert_meal_to_brits(curr_meal,normalize):
     brits_day_data = []
     max_cat = 7 #if we only use 7 categories we have 95% of data included
     meal = 0
@@ -64,22 +85,19 @@ def convert_meal_to_brits(curr_meal):
     daily_categories.sort(reverse=True)
     
     brits_day_data.append(meal)
-    brits_day_data.append(curr_meal['calories'])
-    brits_day_data.append(curr_meal['carbs'])
-    brits_day_data.append(curr_meal['fat'])
-    brits_day_data.append(curr_meal['protein'])
-    brits_day_data.append(curr_meal['cholest'])
-    brits_day_data.append(curr_meal['sodium'])
-    brits_day_data.append(curr_meal['sugar'])
-    brits_day_data.append(curr_meal['fiber'])
+    for val in vals:
+        if normalize:
+            brits_day_data.append(convert_variable(curr_meal,val))
+        else:
+            brits_day_data.append(curr_meal[val])
+    #brits_day_data.extend(daily_categories)
     
-    brits_day_data.extend(daily_categories)
     if len(brits_day_data) != len_x_t:
         raise Exception("len x_t divertes from what it should be!")
     return brits_day_data
 
-def convert_series_to_brits(series):
-    return np.array([convert_meal_to_brits(s) for s in series])
+def convert_series_to_brits(series,normalize=True):
+    return np.array([convert_meal_to_brits(s,normalize) for s in series])
     
    
 def convert_time_series(values,masks,deltas,evals,eval_masks):
@@ -94,16 +112,9 @@ def convert_time_series(values,masks,deltas,evals,eval_masks):
             }
         time_steps.append(entry)    
     return time_steps
-     
-        
-file = open('time_data.pickle', 'rb')
-data = pickle.load(file)
-file.close()
 
-file = open('brits_json.json',"w")
-for series in data:
-    series = data[0]
-    evals = convert_series_to_brits(series)
+def build_brits(series,normalize=True):
+    evals = convert_series_to_brits(series,normalize=normalize)
     drop_meal_indices = np.random.choice(range(len(evals)),len(evals)//10)
     masks = np.ones((len(evals),len_x_t))
     eval_masks = np.zeros((len(evals),len_x_t))
@@ -118,6 +129,36 @@ for series in data:
     
     forwards = convert_time_series(values,masks,deltas,evals,eval_masks)
     backwards = convert_time_series(values[::-1],masks[::-1],deltas_back,evals[::-1],eval_masks[::-1])
-    file.write(json.dumps({'forward': forwards,'backward': backwards}))
-    file.write('\n')
+    return {'forward': forwards,'backward': backwards}
+    
+     
+file_normalization = open('brits_normalization.json','w')
+file_normalization.write(json.dumps({'mean':mean,'std':std}))
+file_normalization.close()
+
+file = open('brits_json.json',"w")
+file_test = open('brits_test.json',"w")
+
+file_nonnorm = open('brits_json_nonnorm.json',"w")
+file_test_nonnorm = open('brits_test_nonnorm.json',"w")
+
+random.seed(10)
+for series in data:
+    series = data[0]
+    brits_nonnorm = build_brits(series,normalize=False)
+    brits_norm = build_brits(series,normalize=True)
+    if random.random() < 0.9:
+        file.write(json.dumps(brits_norm))
+        file.write('\n')
+        
+        file_nonnorm.write(json.dumps(brits_nonnorm))
+        file_nonnorm.write('\n')
+    else:
+        file_test.write(json.dumps(brits_norm))
+        file_test.write('\n')
+        file_test_nonnorm.write(json.dumps(brits_nonnorm))
+        file_test_nonnorm.write('\n')
 file.close()
+file_test.close()
+file_nonnorm.close()
+file_test_nonnorm.close()
