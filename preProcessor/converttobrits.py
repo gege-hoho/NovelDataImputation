@@ -22,7 +22,6 @@ for x in data:
 import pickle
 from classifier import categories
 import numpy as np
-import json
 import math
 import random
 
@@ -58,8 +57,11 @@ def parse_delta(masks, backward=False):
     return np.array(deltas)
 
 def convert_variable(curr_meal,var):
-
-    return (curr_meal[var]-mean[var])/std[var]
+    #x = (float(curr_meal[var])-mean[var])/std[var]
+    #y = x * std[var] + mean[var]
+    #print(f"{curr_meal[var]}\n{y}")
+    #print("")
+    return (float(curr_meal[var])-mean[var])/std[var]
 
 def convert_meal_to_brits(curr_meal,normalize):
     brits_day_data = []
@@ -113,9 +115,8 @@ def convert_time_series(values,masks,deltas,evals,eval_masks):
         time_steps.append(entry)    
     return time_steps
 
-def build_brits(series,normalize=True):
+def build_brits(series,drop_meal_indices,normalize=True):
     evals = convert_series_to_brits(series,normalize=normalize)
-    drop_meal_indices = np.random.choice(range(len(evals)),len(evals)//10)
     masks = np.ones((len(evals),len_x_t))
     eval_masks = np.zeros((len(evals),len_x_t))
     values = evals.copy()
@@ -131,34 +132,43 @@ def build_brits(series,normalize=True):
     backwards = convert_time_series(values[::-1],masks[::-1],deltas_back,evals[::-1],eval_masks[::-1])
     return {'forward': forwards,'backward': backwards}
     
-     
-file_normalization = open('brits_normalization.json','w')
-file_normalization.write(json.dumps({'mean':mean,'std':std}))
-file_normalization.close()
+folder = '../imputation/data'
+    
+with open(f'{folder}/brits_normalization.pickle','wb') as out:
+    pickle.dump({'mean':mean,'std':std},out)
 
-file = open('brits_json.json',"w")
-file_test = open('brits_test.json',"w")
 
-file_nonnorm = open('brits_json_nonnorm.json',"w")
-file_test_nonnorm = open('brits_test_nonnorm.json',"w")
+train = []
+test = []
+
+train_nonnorm = []
+test_nonnorm =[]
+
+train_only = False
 
 random.seed(10)
 for series in data:
     series = data[0]
-    brits_nonnorm = build_brits(series,normalize=False)
-    brits_norm = build_brits(series,normalize=True)
-    if random.random() < 0.9:
-        file.write(json.dumps(brits_norm))
-        file.write('\n')
-        
-        file_nonnorm.write(json.dumps(brits_nonnorm))
-        file_nonnorm.write('\n')
+    drop_meal_indices = np.random.choice(range(len(series)),len(series)//10)
+    brits_nonnorm = build_brits(series,drop_meal_indices,normalize=False)
+    brits_norm = build_brits(series,drop_meal_indices,normalize=True)
+    if random.random() < 0.9 or train_only:
+        train.append(brits_norm)
+        train_nonnorm.append(brits_nonnorm)
     else:
-        file_test.write(json.dumps(brits_norm))
-        file_test.write('\n')
-        file_test_nonnorm.write(json.dumps(brits_nonnorm))
-        file_test_nonnorm.write('\n')
-file.close()
-file_test.close()
-file_nonnorm.close()
-file_test_nonnorm.close()
+        test.append(brits_norm)
+        test_nonnorm.append(brits_nonnorm)
+
+with open(f'{folder}/brits_test_nonnorm.pickle',"wb") as out:
+    pickle.dump(test_nonnorm,out)
+
+with open(f'{folder}/brits_test.pickle',"wb") as out:
+    pickle.dump(test,out)
+    
+with open(f'{folder}/brits_train_nonnorm.pickle',"wb") as out:
+    pickle.dump(train_nonnorm,out)
+
+with open(f'{folder}/brits_train.pickle',"wb") as out:
+    pickle.dump(train,out)
+
+    
