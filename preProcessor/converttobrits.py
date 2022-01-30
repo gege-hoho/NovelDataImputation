@@ -25,19 +25,45 @@ import numpy as np
 import math
 import random
 
-len_x_t = 9
+
+export_non_norm = False
+export_categories = True
+limit_data_per_user = 2
+len_x_t = 16
+time_data_file = 'time_data_big.pickle'
 
 def flatten(t):
     return [item for sublist in t for item in sublist]
 
-file = open('time_data.pickle', 'rb')
-data = pickle.load(file)
-file.close()
+with open(time_data_file, 'rb') as file:
+    data = pickle.load(file)
 
 vals= ['calories','carbs','fat','protein','cholest','sodium','sugar','fiber']
 mean = {}
 std = {}
-for val in vals:
+user_storage = {}
+train = []
+test = []
+
+train_nonnorm = []
+test_nonnorm =[]
+
+train_only = False
+data_new = []
+for series in data:
+    if limit_data_per_user > 0:
+        user = series[0]['user']
+        if user not in user_storage:
+            user_storage[user] = 0
+        if user_storage[user] >= limit_data_per_user:
+            print(f"{user} is there to often skip")
+            continue
+        user_storage[user] += 1
+    data_new.append(series)
+
+data = data_new        
+
+for val in vals:        
     cals = np.array(flatten([[y[val] for y in x]for x in data]))
     mean[val] = cals.mean()
     std[val] = math.sqrt(cals.std())
@@ -57,10 +83,6 @@ def parse_delta(masks, backward=False):
     return np.array(deltas)
 
 def convert_variable(curr_meal,var):
-    #x = (float(curr_meal[var])-mean[var])/std[var]
-    #y = x * std[var] + mean[var]
-    #print(f"{curr_meal[var]}\n{y}")
-    #print("")
     return (float(curr_meal[var])-mean[var])/std[var]
 
 def convert_meal_to_brits(curr_meal,normalize):
@@ -92,7 +114,8 @@ def convert_meal_to_brits(curr_meal,normalize):
             brits_day_data.append(convert_variable(curr_meal,val))
         else:
             brits_day_data.append(curr_meal[val])
-    #brits_day_data.extend(daily_categories)
+    if export_categories:
+        brits_day_data.extend(daily_categories)
     
     if len(brits_day_data) != len_x_t:
         raise Exception("len x_t divertes from what it should be!")
@@ -124,6 +147,10 @@ def build_brits(series,drop_meal_indices,normalize=True):
         values[index] = np.zeros(len_x_t)
         masks[index] = np.zeros(len_x_t)
         eval_masks[index] = np.ones(len_x_t)
+        #now put meal back
+        values[index][0] = evals[index][0]
+        masks[index][0] = 1
+        eval_masks[index][0] = 0
     
     deltas = parse_delta(masks)
     deltas_back = parse_delta(masks,backward =True)
@@ -136,19 +163,10 @@ folder = '../imputation/data'
     
 with open(f'{folder}/brits_normalization.pickle','wb') as out:
     pickle.dump({'mean':mean,'std':std},out)
-
-
-train = []
-test = []
-
-train_nonnorm = []
-test_nonnorm =[]
-
-train_only = False
+print("Lets Go")
 
 random.seed(10)
-for series in data:
-    series = data[0]
+for series in data:        
     drop_meal_indices = np.random.choice(range(len(series)),len(series)//10)
     brits_nonnorm = build_brits(series,drop_meal_indices,normalize=False)
     brits_norm = build_brits(series,drop_meal_indices,normalize=True)
@@ -159,16 +177,15 @@ for series in data:
         test.append(brits_norm)
         test_nonnorm.append(brits_nonnorm)
 
-with open(f'{folder}/brits_test_nonnorm.pickle',"wb") as out:
-    pickle.dump(test_nonnorm,out)
+
 
 with open(f'{folder}/brits_test.pickle',"wb") as out:
     pickle.dump(test,out)
-    
-with open(f'{folder}/brits_train_nonnorm.pickle',"wb") as out:
-    pickle.dump(train_nonnorm,out)
-
 with open(f'{folder}/brits_train.pickle',"wb") as out:
     pickle.dump(train,out)
 
-    
+if export_non_norm:  
+    with open(f'{folder}/brits_train_nonnorm.pickle',"wb") as out:
+        pickle.dump(train_nonnorm,out)
+    with open(f'{folder}/brits_test_nonnorm.pickle',"wb") as out:
+        pickle.dump(test_nonnorm,out)

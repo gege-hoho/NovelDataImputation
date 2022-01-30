@@ -42,7 +42,7 @@ exists (select * from (select sum(calories) s from meal_history_flat mlf2
 select_user_with_history = """
 select u.user from user u
 where u.food_crawl_time is not null and
-exists(select * from meal_history_flat mlf where mlf.user = u.user) limit 3000
+exists(select * from meal_history_flat mlf where mlf.user = u.user) limit 10000
 """
 
 def get_meal_history_flat_filtered_by_user_id(con, user, snacks=True):
@@ -176,24 +176,30 @@ def convert_to_time_series(frags):
         time_fragments.append(user_fragment)
     return time_fragments
 
+with  open('time_data_big3.pickle', 'rb') as file:
+   data = pickle.load(file) 
+crawled_users = set([x[0]['user'] for x in data])
+
 t0 = time.time()
 classy = Classifier("../preProcessor/data/models")
 con = sqlite3.connect("../preProcessor/data/mfp.db")
 user_ids = get_user_ids_with_history(con)
-time_series = []
+time_series = data
 for x in user_ids:
+    if x <= max(crawled_users):
+        continue
     print(f"Curr len: {len(time_series)} Now Processing: {x}")
     l = get_meal_history_flat_filtered_by_user_id(con, x,snacks=True)
     frags = extract_fragments_from_meals(l)
     process_fragments(classy,frags)
     time_series.extend(convert_to_time_series(frags))
-    if len(time_series) > 400:
-        break
+    #if len(time_series) > 400:
+    #    break
 t1 = time.time()
 print(f"TIme Elapsed {(t1-t0):2f}")
 print(len(time_series))
 
-with open('time_data.pickle', 'wb') as outfile:
+with open('time_data_big4.pickle', 'wb') as outfile:
     pickle.dump(time_series, outfile)
 
 #with open('data.json', 'w') as f:

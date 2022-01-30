@@ -71,3 +71,5 @@ create index meal_history_flat_user_index
 create index meal_history_flat_date_index
     on meal_history_flat (date);
 
+create index meal_history_flat_meal_index
+    on meal_history_flat (meal);
