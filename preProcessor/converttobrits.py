@@ -31,12 +31,26 @@ export_categories = True
 limit_data_per_user = 2
 len_x_t = 16
 time_data_file = 'time_data_big.pickle'
+limit_top_categories = 30 #only take the most used x cateogries
+max_cat = 7 #if we only use 7 categories we have 95% of data included
+no_not_categories = 9
+not_export_indexes = [0]+list(range(no_not_categories,max_cat + no_not_categories))# indexes which shouldn't go missing (meal and categories)
 
 def flatten(t):
     return [item for sublist in t for item in sublist]
 
 with open(time_data_file, 'rb') as file:
     data = pickle.load(file)
+
+data_categories = flatten([flatten([list(set(y['category'])) for y in x]) for x in data])
+counted_categories = {}
+for x in categories:
+    if x not in counted_categories:
+        counted_categories[x] = 0
+    counted_categories[x] = data_categories.count(x)
+counted_categories = sorted([x for x in counted_categories.items()], key=(lambda x:x[1]),reverse=True)
+if limit_top_categories > 0:
+    counted_categories = [x for x,_ in counted_categories][:limit_top_categories]
 
 vals= ['calories','carbs','fat','protein','cholest','sodium','sugar','fiber']
 mean = {}
@@ -87,7 +101,6 @@ def convert_variable(curr_meal,var):
 
 def convert_meal_to_brits(curr_meal,normalize):
     brits_day_data = []
-    max_cat = 7 #if we only use 7 categories we have 95% of data included
     meal = 0
     if curr_meal['meal'] == 'breakfast':
         meal = 1
@@ -102,10 +115,14 @@ def convert_meal_to_brits(curr_meal,normalize):
     
     #convert to category numbers
     daily_categories = [-1 for _ in range(max_cat)]
-    for i,c in enumerate(curr_meal['category']):
+    if limit_top_categories > 0:
+        cats = list(set([counted_categories.index(c) for c in curr_meal['category'] if c in counted_categories]))
+    else:
+        cats = list(set([categories.index(c) for c in curr_meal['category']]))
+    for i,c in enumerate(cats):
         if i == max_cat:
             break
-        daily_categories[i] = categories.index(c)
+        daily_categories[i] = c
     daily_categories.sort(reverse=True)
     
     brits_day_data.append(meal)
@@ -138,6 +155,7 @@ def convert_time_series(values,masks,deltas,evals,eval_masks):
         time_steps.append(entry)    
     return time_steps
 
+
 def build_brits(series,drop_meal_indices,normalize=True):
     evals = convert_series_to_brits(series,normalize=normalize)
     masks = np.ones((len(evals),len_x_t))
@@ -148,9 +166,10 @@ def build_brits(series,drop_meal_indices,normalize=True):
         masks[index] = np.zeros(len_x_t)
         eval_masks[index] = np.ones(len_x_t)
         #now put meal back
-        values[index][0] = evals[index][0]
-        masks[index][0] = 1
-        eval_masks[index][0] = 0
+        for x in not_export_indexes:
+            values[index][x] = evals[index][x]
+            masks[index][x] = 1
+            eval_masks[index][x] = 0
     
     deltas = parse_delta(masks)
     deltas_back = parse_delta(masks,backward =True)
@@ -166,6 +185,7 @@ with open(f'{folder}/brits_normalization.pickle','wb') as out:
 print("Lets Go")
 
 random.seed(10)
+np.random.seed(10)
 for series in data:        
     drop_meal_indices = np.random.choice(range(len(series)),len(series)//10)
     brits_nonnorm = build_brits(series,drop_meal_indices,normalize=False)

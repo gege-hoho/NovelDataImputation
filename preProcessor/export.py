@@ -181,7 +181,7 @@ with  open('time_data_big3.pickle', 'rb') as file:
 crawled_users = set([x[0]['user'] for x in data])
 
 t0 = time.time()
-classy = Classifier("../preProcessor/data/models")
+classy = Classifier("../preProcessor")
 con = sqlite3.connect("../preProcessor/data/mfp.db")
 user_ids = get_user_ids_with_history(con)
 time_series = data
