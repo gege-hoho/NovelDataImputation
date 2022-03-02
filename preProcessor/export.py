@@ -31,12 +31,15 @@ select_meal_history_filtered_by_user_no_snacks = """
 select * from meal_history_flat mlf
 where mlf.meal in ('breakfast','lunch','dinner','snacks') and
 mlf.name not like 'Quick Add%' and
-mlf.user = ? and not 
-exists (select * from meal_history_flat mlf3 where mlf3.date = mlf.date and mlf3.user = mlf.user and mlf3.meal = 'snacks') and 
-exists (select * from (select sum(calories) s from meal_history_flat mlf2
+mlf.user = ? and
+    exists (select * from meal_history_flat mlf3 where mlf3.date = mlf.date and mlf3.user = mlf.user and mlf3.meal = 'breakfast' and mlf3.name not like 'Quick Add%' ) and
+    exists (select * from meal_history_flat mlf3 where mlf3.date = mlf.date and mlf3.user = mlf.user and mlf3.meal = 'lunch' and mlf3.name not like 'Quick Add%') and
+    exists (select * from meal_history_flat mlf3 where mlf3.date = mlf.date and mlf3.user = mlf.user and mlf3.meal = 'dinner' and mlf3.name not like 'Quick Add%') and
+    not exists (select * from meal_history_flat mlf3 where mlf3.date = mlf.date and mlf3.user = mlf.user and mlf3.meal = 'snacks' and mlf3.name not like 'Quick Add%') and
+    exists (select * from (select sum(calories) s from meal_history_flat mlf2
                        where mlf2.user = mlf.user and mlf2.date = mlf.date and
                        mlf2.meal in ('breakfast','lunch','dinner','snacks')) a
-        where a.s > 1600)
+            where a.s > 1600)
 """
 
 select_user_with_history = """
@@ -176,12 +179,14 @@ def convert_to_time_series(frags):
         time_fragments.append(user_fragment)
     return time_fragments
 
-with  open('time_data_big3.pickle', 'rb') as file:
-   data = pickle.load(file) 
-crawled_users = set([x[0]['user'] for x in data])
+#with  open('time_data_big3.pickle', 'rb') as file:
+#   data = pickle.load(file) 
+#crawled_users = set([x[0]['user'] for x in data])
+data = []
+crawled_users = []
 
 t0 = time.time()
-classy = Classifier("../preProcessor")
+classy = Classifier("../preProcessor/data/models")
 con = sqlite3.connect("../preProcessor/data/mfp.db")
 user_ids = get_user_ids_with_history(con)
 time_series = data
@@ -189,7 +194,7 @@ for x in user_ids:
     if x <= max(crawled_users):
         continue
     print(f"Curr len: {len(time_series)} Now Processing: {x}")
-    l = get_meal_history_flat_filtered_by_user_id(con, x,snacks=True)
+    l = get_meal_history_flat_filtered_by_user_id(con, x,snacks=False)
     frags = extract_fragments_from_meals(l)
     process_fragments(classy,frags)
     time_series.extend(convert_to_time_series(frags))

@@ -27,14 +27,16 @@ import random
 
 
 export_non_norm = False
-export_categories = True
+export_categories = False
+only_max_user = False
+export_day = True
 limit_data_per_user = 2
-len_x_t = 16
+len_x_t = 10
 time_data_file = 'time_data_big.pickle'
-limit_top_categories = 30 #only take the most used x cateogries
+limit_top_categories = -1#30 #only take the most used x cateogries
 max_cat = 7 #if we only use 7 categories we have 95% of data included
-no_not_categories = 9
-not_export_indexes = [0]+list(range(no_not_categories,max_cat + no_not_categories))# indexes which shouldn't go missing (meal and categories)
+no_not_categories = 10
+not_export_indexes = [0,9]#+list(range(no_not_categories,max_cat + no_not_categories))# indexes which shouldn't go missing (meal and categories)
 
 def flatten(t):
     return [item for sublist in t for item in sublist]
@@ -56,13 +58,27 @@ vals= ['calories','carbs','fat','protein','cholest','sodium','sugar','fiber']
 mean = {}
 std = {}
 user_storage = {}
-train = []
-test = []
 
-train_nonnorm = []
-test_nonnorm =[]
+random.seed(10)
+np.random.seed(10)
 
 train_only = False
+data_by_user= {}
+if limit_data_per_user > 0:
+    for x in data:
+        user = x[0]['user']
+        if user not in data_by_user:
+            data_by_user[user] = []
+        data_by_user[user].append(x)
+    
+    data_new = []    
+    for v in data_by_user.values():
+        if len(v) > limit_data_per_user:
+            data_new.extend(random.sample(v,k=limit_data_per_user))
+        else:
+            data_new.extend(v)
+data = data_new
+"""    
 data_new = []
 for series in data:
     if limit_data_per_user > 0:
@@ -75,7 +91,8 @@ for series in data:
         user_storage[user] += 1
     data_new.append(series)
 
-data = data_new        
+data = data_new      
+"""  
 
 for val in vals:        
     cals = np.array(flatten([[y[val] for y in x]for x in data]))
@@ -131,6 +148,9 @@ def convert_meal_to_brits(curr_meal,normalize):
             brits_day_data.append(convert_variable(curr_meal,val))
         else:
             brits_day_data.append(curr_meal[val])
+    if export_day:
+        #print(curr_meal['date'].weekday())
+        brits_day_data.append(curr_meal['date'].weekday())
     if export_categories:
         brits_day_data.extend(daily_categories)
     
@@ -184,10 +204,37 @@ with open(f'{folder}/brits_normalization.pickle','wb') as out:
     pickle.dump({'mean':mean,'std':std},out)
 print("Lets Go")
 
+user_count = {}
+for x in data:
+    user = x[0]['user']
+    for y in x:
+        if user != y['user']:
+            raise Exception("User need to be the same over whole time")
+    if user not in user_count:
+        user_count[user] = 0
+    user_count[user] += 1
+
+if only_max_user:
+    max_user = sorted(user_count.items(), key=lambda x:x[1],reverse = True)
+    max_user = max_user[49]
+    #max_user = max_user[0]
+    data = [s for s in data if s[0]['user'] == max_user[0]]
+    random.seed(10)
+    np.random.seed(10)
+    #indexes = random.sample(range(len(data)),k=85)
+    #data = [x for k,x in enumerate(data) if k in indexes]
+
+
 random.seed(10)
 np.random.seed(10)
-for series in data:        
-    drop_meal_indices = np.random.choice(range(len(series)),len(series)//10)
+
+train = []
+test = []
+
+train_nonnorm = []
+test_nonnorm =[]
+for series in data:
+    drop_meal_indices = np.random.choice(range(len(series)),int(len(series)*0.1))
     brits_nonnorm = build_brits(series,drop_meal_indices,normalize=False)
     brits_norm = build_brits(series,drop_meal_indices,normalize=True)
     if random.random() < 0.9 or train_only:
