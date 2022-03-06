@@ -20,7 +20,7 @@ for x in data:
         cat_count[l] += 1
 """          
 import pickle
-from classifier import categories
+from preProcessor.classifier import FoodClassificationCnnModel,Classifier,categories
 import numpy as np
 import math
 import random
@@ -32,7 +32,7 @@ only_max_user = False
 export_day = True
 limit_data_per_user = 2
 len_x_t = 10
-time_data_file = 'time_data_big.pickle'
+time_data_file = 'preProcessor/time_data_big.pickle'
 limit_top_categories = -1#30 #only take the most used x cateogries
 max_cat = 7 #if we only use 7 categories we have 95% of data included
 no_not_categories = 10
@@ -198,7 +198,7 @@ def build_brits(series,drop_meal_indices,normalize=True):
     backwards = convert_time_series(values[::-1],masks[::-1],deltas_back,evals[::-1],eval_masks[::-1])
     return {'forward': forwards,'backward': backwards}
     
-folder = '../imputation/data'
+folder = 'imputation/data'
     
 with open(f'{folder}/brits_normalization.pickle','wb') as out:
     pickle.dump({'mean':mean,'std':std},out)
@@ -233,10 +233,15 @@ test = []
 
 train_nonnorm = []
 test_nonnorm =[]
+
+skip_over_cals = 3000 #skip week if it has over x calories
 for series in data:
     drop_meal_indices = np.random.choice(range(len(series)),int(len(series)*0.1))
     brits_nonnorm = build_brits(series,drop_meal_indices,normalize=False)
     brits_norm = build_brits(series,drop_meal_indices,normalize=True)
+    
+    if next((x for x in series if x['calories']>skip_over_cals),None) != None:
+        continue
     if random.random() < 0.9 or train_only:
         train.append(brits_norm)
         train_nonnorm.append(brits_nonnorm)
@@ -244,7 +249,7 @@ for series in data:
         test.append(brits_norm)
         test_nonnorm.append(brits_nonnorm)
 
-
+print(len(train)+len(test))
 
 with open(f'{folder}/brits_test.pickle',"wb") as out:
     pickle.dump(test,out)

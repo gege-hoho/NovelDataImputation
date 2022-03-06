@@ -4,15 +4,21 @@
 Created on Sat Mar  5 15:23:30 2022
 
 @author: gregor
+
+Create plots, that are based on the categories.
 """
 
 import pickle
 import datetime
 import sqlite3
+from tqdm import tqdm
 import pandas as pd
+from preProcessor.classifier import FoodClassificationCnnModel,Classifier,categories
 import numpy as np
 
 con = sqlite3.connect("preProcessor/data/mfp.db")
+classy = Classifier("preProcessor/data/models")
+nutri_names = ("calories","carbs","fat","protein", "cholest","sugar", "sodium", "fiber")
 
 def get_interaction(con,year):
     cur = con.cursor()
@@ -31,6 +37,27 @@ def get_user_info(con,user):
     cur.close()
     res = res[0]
     return {"user": res[0], "gender": res[2], "age": res[9],"location": res[3]}
+
+def get_meal_by_user_date(con,user,date):
+    cur =  con.cursor()
+    date = date.strftime('%d-%m-%y')
+    cur.execute(f"""select * from meal_history_flat where user = {user} and date = '{date}'""")
+    res = cur.fetchall()
+    cur.close()   
+    return [{"user": x[3],
+      "meal": x[2],
+      "date": x[1],
+      "name": x[4],
+      "calories": x[6],
+      "carbs": x[7],
+      "fat": x[8],
+      "protein": x[9],
+      "cholest":x[10],
+      "sodium": x[11],
+      "sugar": x[12],
+      "fiber": x[13],
+      "category":classy.get_cat_name(classy.classify(x[4]))}
+     for x in res]
 
 def get_categories(flat_list):
     categories = {"breakfast":{},
@@ -59,13 +86,15 @@ fall = range(264, 355)
 winter = list(range(80))
 winter.extend(range(355,366))
 
+#remove values over 3000 cals
+data = [series for series in data 
+        if next((x for x in series if x['calories']>3000),None) == None]
+
 flat_list = [item for sublist in data for item in sublist]
 list_spring = [x for x in flat_list if x["date"].timetuple().tm_yday in spring]
 list_summer = [x for x in flat_list if x["date"].timetuple().tm_yday in summer]
 list_fall = [x for x in flat_list if x["date"].timetuple().tm_yday in fall]
 list_winter = [x for x in flat_list if x["date"].timetuple().tm_yday in winter]
-
-
         
 user_count = {}
 for x in data:
@@ -79,19 +108,19 @@ for x in data:
 max_user = sorted(user_count.items(), key=lambda x:x[1],reverse = True)
 user_list = list(user_count.keys())
 
-categories = get_categories(flat_list)
+categories_count = get_categories(flat_list)
 categories_spring = get_categories(list_spring)
 categories_summer = get_categories(list_summer)
 categories_fall = get_categories(list_fall)
 categories_winter= get_categories(list_winter)
-#plot somehow category differences for different meals
+#todo: plot somehow category differences for different meals
 
 only_151 =  [x for x in flat_list if x['user'] == max_user[0][0]]
-#ploot only_151 over one year
+#todo: plot only_151 over one year
 
 interaction = get_interaction(con,20)
 interaction.sort(key=lambda x:x[1])
-#plot interaction over one year
+#todo: plot interaction over one year interaction
 
 user_data = pd.DataFrame([get_user_info(con,x) for x in user_list])
 food_data = pd.DataFrame(flat_list)
@@ -99,7 +128,8 @@ food_data = food_data.join(user_data.set_index('user'), on='user')
 
 gender_nutries = []
 meal_nutries = []
-for nutri in ("calories","carbs","fat","protein", "cholest","sugar", "sodium", "fiber"):
+
+for nutri in nutri_names:
     for gender in ("m","f"):
         x = food_data[food_data['gender']==gender][nutri]
         gender_nutries.append((np.mean(x),np.std(x)))
@@ -108,6 +138,39 @@ for nutri in ("calories","carbs","fat","protein", "cholest","sugar", "sodium", "
         x = food_data[food_data['meal']==meal][nutri]
         meal_nutries.append((np.mean(x),np.std(x)))
 
-#plot nutri per gender
-#plot nutri per meal
+#todo: plot nutri per gender gender_nutries
+#todo: plot nutri per meal meal_nutries
+read_meals_from_db = False
+if read_meals_from_db:
+    meals = []
+    food_data_no_duplicates = food_data[["date","user"]].drop_duplicates()
+    for _,row in tqdm(food_data_no_duplicates.iterrows(),total=len(food_data_no_duplicates)):
+        meals.extend(get_meal_by_user_date(con,row["user"],row["date"]))
+    meal_df = pd.DataFrame(meals)
+    with open('meals.pickle', 'wb') as file:
+        pickle.dump(meal_df, file)    
+else:
+    with open('meals.pickle', 'rb') as file:
+        meal_df = pickle.load(file)
 
+meal_df = meal_df[meal_df["calories"]<2000]
+meal_df = meal_df.join(user_data.set_index('user'), on='user')
+meal_df["category"] = meal_df["category"].astype('category')
+cat_wise_mean =  []
+for cat in tqdm(categories):
+    entry = {"category": cat}
+    means = np.nanmean(meal_df[meal_df["category"] == cat][list(nutri_names)],0)
+    stds = np.nanstd(meal_df[meal_df["category"] == cat][list(nutri_names)],0)
+    for i,nutri in enumerate(nutri_names):
+        entry[f"{nutri} mean"] = means[i]
+        entry[f"{nutri} std"] = stds[i]
+    cat_wise_mean.append(entry)
+cat_wise_mean = pd.DataFrame(cat_wise_mean)
+cat_wise_mean
+#todo: plot cat_wise_mean
+#why is std so high doesn't make sense to me???
+
+meal_df[meal_df["gender"]=="m"]["category"].value_counts()[:10]
+meal_df[meal_df["gender"]=="f"]["category"].value_counts()[:10]
+#todo: plot category difference gender wise
+    

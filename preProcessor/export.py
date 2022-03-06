@@ -7,7 +7,7 @@ Created on Sun Jan  9 14:52:25 2022
 """
 import sqlite3
 import datetime
-from classifier import FoodClassificationCnnModel,Classifier
+from preProcessor.classifier import FoodClassificationCnnModel,Classifier,categories
 import time
 import json
 import pickle
@@ -186,8 +186,8 @@ data = []
 crawled_users = []
 
 t0 = time.time()
-classy = Classifier("../preProcessor/data/models")
-con = sqlite3.connect("../preProcessor/data/mfp.db")
+classy = Classifier("preProcessor/data/models")
+con = sqlite3.connect("preProcessor/data/mfp.db")
 user_ids = get_user_ids_with_history(con)
 time_series = data
 for x in user_ids:
@@ -204,7 +204,7 @@ t1 = time.time()
 print(f"TIme Elapsed {(t1-t0):2f}")
 print(len(time_series))
 
-with open('time_data_big4.pickle', 'wb') as outfile:
+with open('time_data_big_test.pickle', 'wb') as outfile:
     pickle.dump(time_series, outfile)
 
 #with open('data.json', 'w') as f:
