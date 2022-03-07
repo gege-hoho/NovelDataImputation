@@ -14,11 +14,25 @@ import sqlite3
 from tqdm import tqdm
 import pandas as pd
 from preProcessor.classifier import FoodClassificationCnnModel,Classifier,categories
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import rcParams
 
 con = sqlite3.connect("preProcessor/data/mfp.db")
 classy = Classifier("preProcessor/data/models")
 nutri_names = ("calories","carbs","fat","protein", "cholest","sugar", "sodium", "fiber")
+meals = ["breakfast","lunch","dinner","snacks"]
+
+font_size = 6.5
+rcParams.update({'font.size':font_size})
+
+plot_folder = 'dataextraction/plots/'
+
+def save(fig,name):
+    fig.tight_layout()
+    plt.savefig(plot_folder+name) 
+
 
 def get_interaction(con,year):
     cur = con.cursor()
@@ -109,14 +123,33 @@ max_user = sorted(user_count.items(), key=lambda x:x[1],reverse = True)
 user_list = list(user_count.keys())
 
 categories_count = get_categories(flat_list)
-categories_spring = get_categories(list_spring)
-categories_summer = get_categories(list_summer)
-categories_fall = get_categories(list_fall)
-categories_winter= get_categories(list_winter)
-#todo: plot somehow category differences for different meals
+selected_cats = ["Cereal","Milk","Bacon, Sausages & Ribs","Deli Salads",
+                 "Meat/Poultry/Other Animals","Stuffing","Candy"]
+cat_plot_arr = np.zeros((len(selected_cats),len(meals)))
+for i,curr_cat in enumerate(selected_cats):
+    meal_vals = [next((y for x,y in categories_count[m] if x==curr_cat),None)for m in meals]
+    meal_vals = np.array(meal_vals)
+    meal_vals = meal_vals/meal_vals.sum()
+    cat_plot_arr[i] = meal_vals
+cat_plot_arr = cat_plot_arr.transpose()
 
-only_151 =  [x for x in flat_list if x['user'] == max_user[0][0]]
-#todo: plot only_151 over one year
+X = np.arange(len(selected_cats))
+Y = np.arange(len(meals))
+fig,axs = plt.subplots(nrows=1, ncols=1, figsize=(5.8, 3))
+axs.set_xticks(X)
+axs.set_xticklabels(selected_cats,rotation=45,rotation_mode="anchor",ha="left")
+axs.set_yticks(Y)
+axs.set_yticklabels(meals)
+axs.xaxis.tick_top()
+image = axs.imshow(cat_plot_arr,cmap="cividis")#viridis
+divider = make_axes_locatable(axs)
+cax = divider.append_axes("right", size="5%", pad=0.05)
+fig.colorbar(image,cax=cax)
+save(fig,"categories_to_meal_plot.pdf")
+
+week_days=[[]for x in range(7)]
+
+
 
 interaction = get_interaction(con,20)
 interaction.sort(key=lambda x:x[1])
