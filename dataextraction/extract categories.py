@@ -17,6 +17,7 @@ from preProcessor.classifier import FoodClassificationCnnModel,Classifier,catego
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import matplotlib.pyplot as plt
+import string
 from matplotlib import rcParams
 
 con = sqlite3.connect("preProcessor/data/mfp.db")
@@ -173,7 +174,7 @@ fig.legend()
 axs.set_xticks(X)
 axs.set_xticklabels(["Mo","Tu","We","Th","Fr","Sa","Su"])
 axs.set_xlabel("Day of the Week")
-save(fig,"calories_nutrients_per_weekday.pdf")
+save(fig,"calories_nutrients_per_weekday_plot.pdf")
 
 
 
@@ -276,6 +277,9 @@ axs[0,0].bar(X+0.75,meal_nutries[3,0],width = 0.25)
 axs[0,0].set_ylabel("calories")
 axs[0,0].set_xticks([0,0.25,0.5,0.75])
 axs[0,0].set_xticklabels(["breakfast","lunch","dinner","snacks"])
+for n, ax in enumerate(axs.flatten()):
+    ax.text(-0.1, 1.05, f"{string.ascii_lowercase[n]})", transform=ax.transAxes, 
+            size=font_size)
 save(fig,"nutrients_meal_plot.pdf")
 
 read_meals_from_db = False
@@ -323,7 +327,7 @@ for j,row in enumerate(scwm[0]):
 axs.set_ylabel("calories")
 axs.set_xticks([i*w for i in range(len(selected_cats))])
 axs.set_xticklabels(selected_cats,rotation=45,rotation_mode="anchor",ha="right")
-save(fig,"calories_selected_categories.pdf")
+save(fig,"calories_selected_categories_plot.pdf")
 
 X = np.arange(len(selected_cats))
 Y = np.arange(3)
@@ -339,7 +343,7 @@ divider = make_axes_locatable(axs)
 cax = divider.append_axes("right", size="5%", pad=0.05)
 cbar = fig.colorbar(image,cax=cax)
 cbar.set_label('caloriewise % \n of nutrient in portion', rotation=270,labelpad=18)
-save(fig,"nutrition_distribution_categories.pdf")
+save(fig,"nutrition_distribution_categories_plot.pdf")
 
 
 meal_df[meal_df["gender"]=="m"]["category"].value_counts()[:10]
