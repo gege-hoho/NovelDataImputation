@@ -94,21 +94,11 @@ def get_categories(flat_list):
 with open("preProcessor/time_data_enorm.pickle", 'rb') as file:
     data = pickle.load(file)
 
-spring = range(80, 172)
-summer = range(172, 264)
-fall = range(264, 355)
-winter = list(range(80))
-winter.extend(range(355,366))
-
 #remove values over 3000 cals
 data = [series for series in data 
         if next((x for x in series if x['calories']>3000),None) == None]
 
 flat_list = [item for sublist in data for item in sublist]
-list_spring = [x for x in flat_list if x["date"].timetuple().tm_yday in spring]
-list_summer = [x for x in flat_list if x["date"].timetuple().tm_yday in summer]
-list_fall = [x for x in flat_list if x["date"].timetuple().tm_yday in fall]
-list_winter = [x for x in flat_list if x["date"].timetuple().tm_yday in winter]
         
 user_count = {}
 for x in data:
@@ -144,16 +134,73 @@ axs.xaxis.tick_top()
 image = axs.imshow(cat_plot_arr,cmap="cividis")#viridis
 divider = make_axes_locatable(axs)
 cax = divider.append_axes("right", size="5%", pad=0.05)
-fig.colorbar(image,cax=cax)
+cbar = fig.colorbar(image,cax=cax)
+cbar.set_label('likelihood of category in meal', rotation=270,labelpad=10)
 save(fig,"categories_to_meal_plot.pdf")
 
+
+
 week_days=[[]for x in range(7)]
+for l in flat_list:
+    week_days[l['date'].weekday()].append([l[n]for n in nutri_names])
+week_days = np.array(week_days)
+week_cals = week_days[:,:,0].mean(axis=1)*4
+week_carbs = week_days[:,:,1].mean(axis=1)*4
+week_carbs = week_carbs *4 #4 calories per 100g
+week_fats = week_days[:,:,2].mean(axis=1)*4
+week_fats = week_fats*9
+week_protein = week_days[:,:,3].mean(axis=1)*4
+week_protein = week_protein*4
+week_sum = week_carbs +week_fats + week_protein
+week_carbs = week_carbs/week_sum
+week_fats = week_fats/week_sum
+week_protein = week_protein/week_sum
+#week_carbs = week_carbs/week_carbs.max()
+#week_fats = week_fats/week_fats.max()
+#week_protein = week_protein/week_protein.max()
+
+X = np.arange(7)
+fig,axs = plt.subplots(nrows=1, ncols=1, figsize=(5.8, 3.5))
+axs2 = axs.twinx()
+axs.set_ylabel("Avg. calories")
+axs2.plot(week_carbs,marker='s',label='carbs')
+axs2.plot(week_fats,marker='s',label='fat')
+axs2.plot(week_protein,marker='s',label='protein')
+axs2.set_ylabel("Avg. % of calories per nutrient")
+axs.plot(week_cals)
+axs.plot(week_cals,marker='o',color='gray',label='calories')
+fig.legend()
+axs.set_xticks(X)
+axs.set_xticklabels(["Mo","Tu","We","Th","Fr","Sa","Su"])
+axs.set_xlabel("Day of the Week")
+save(fig,"calories_nutrients_per_weekday.pdf")
 
 
 
 interaction = get_interaction(con,20)
 interaction.sort(key=lambda x:x[1])
-#todo: plot interaction over one year interaction
+
+Y= [y for y,_ in interaction]
+weekdays = [y for y,x in interaction if x.weekday()<5]
+weekdays_X = [i for (i,(_,x)) in enumerate(interaction) if x.weekday()<5]
+weekends = [y for y,x in interaction if x.weekday()>=5]
+weekends_X = [i for (i,(_,x)) in enumerate(interaction) if x.weekday()>=5]
+markers = [x.strftime("%b") for _,x in interaction if x.day  == 1]
+X = [i for i,(_,x) in enumerate(interaction) if x.day  == 1]
+christmas = [y for y,x in interaction if x.day == x.day == 25 and x.month == 12]
+christmas_X = [i for i,(_,x) in enumerate(interaction) if x.day == 25 and x.month == 12]
+fig,axs = plt.subplots(nrows=1, ncols=1, figsize=(5.8, 1.5))
+axs.plot(Y)
+axs.plot(weekends_X,weekends,marker='s',markersize=1.5,label='weekend',linestyle="None")
+axs.plot(christmas_X,christmas,marker='o',markersize=1.5,label='christmas',linestyle="None")
+axs.set_xticks(X)
+axs.set_xticklabels(markers)
+axs.set_xlabel("Day of year 2020")
+axs.set_ylabel("Interaction")
+axs.margins(x=0)
+fig.legend()
+save(fig,"interaction_plot.pdf")
+
 
 user_data = pd.DataFrame([get_user_info(con,x) for x in user_list])
 food_data = pd.DataFrame(flat_list)
@@ -162,17 +209,75 @@ food_data = food_data.join(user_data.set_index('user'), on='user')
 gender_nutries = []
 meal_nutries = []
 
-for nutri in nutri_names:
+for nutri in ("calories","carbs","fat","protein"):
     for gender in ("m","f"):
         x = food_data[food_data['gender']==gender][nutri]
+        if nutri == "carbs":
+            x = x*4
+        elif nutri == "fat":
+            x = x*9
+        elif nutri == "protein":
+            x = x*4
         gender_nutries.append((np.mean(x),np.std(x)))
         
     for meal in ("breakfast","lunch","dinner","snacks"):    
         x = food_data[food_data['meal']==meal][nutri]
-        meal_nutries.append((np.mean(x),np.std(x)))
+        if nutri == "carbs":
+            x = x*4
+        elif nutri == "fat":
+            x = x*9
+        elif nutri == "protein":
+            x = x*4
+gender_nutries = np.array(gender_nutries)
+meal_nutries = np.array(meal_nutries)
 
-#todo: plot nutri per gender gender_nutries
-#todo: plot nutri per meal meal_nutries
+fig,axs = plt.subplots(nrows=2, ncols=2, figsize=(5.8, 5))
+X = np.arange(1)
+for i in range(2):
+    for k in range(2):
+        if i + k == 0:
+            continue
+        axs[i,k].bar(X,gender_nutries[::2,0][2*i+k]/gender_nutries[0,0],width = 0.45, label = "male")
+        axs[i,k].bar(X+0.45,gender_nutries[1::2,0][2*i+k]/gender_nutries[1,0],width = 0.45,label="female")
+        axs[i,k].set_ylabel(f'% of {["calories","carbs","fat","protein"][2*i+k]} in calories')
+        if k % 2 == 1:
+            axs[i,k].yaxis.tick_right()
+            axs[i,k].yaxis.set_label_position("right")
+        axs[i,k].set_xticks([0,0.45])
+        axs[i,k].set_xticklabels(["male","female"])
+axs[0,0].bar(X,gender_nutries[0,0],width = 0.45, label = "male")
+axs[0,0].bar(X+0.45,gender_nutries[1,0],width = 0.45,label="female")        
+axs[0,0].set_ylabel("calories")
+axs[0,0].set_xticks([0,0.45])
+axs[0,0].set_xticklabels(["male","female"])
+save(fig,"nutrients_gender_plot.pdf")
+
+
+fig,axs = plt.subplots(nrows=2, ncols=2, figsize=(5.8, 5))
+X = np.arange(1)
+for i in range(2):
+    for k in range(2):
+        if i + k == 0:
+            continue
+        axs[i,k].bar(X,meal_nutries[::4,0][2*i+k]/meal_nutries[0,0],width = 0.25)
+        axs[i,k].bar(X+0.25,meal_nutries[1::4,0][2*i+k]/meal_nutries[1,0],width = 0.25)
+        axs[i,k].bar(X+0.5,meal_nutries[2::4,0][2*i+k]/meal_nutries[2,0],width = 0.25)
+        axs[i,k].bar(X+0.75,meal_nutries[3::4,0][2*i+k]/meal_nutries[3,0],width = 0.25)
+        axs[i,k].set_ylabel(f'% of {["calories","carbs","fat","protein"][2*i+k]} in calories')
+        if k % 2 == 1:
+            axs[i,k].yaxis.tick_right()
+            axs[i,k].yaxis.set_label_position("right")
+        axs[i,k].set_xticks([0,0.25,0.5,0.75])
+        axs[i,k].set_xticklabels(["breakfast","lunch","dinner","snacks"])
+axs[0,0].bar(X,meal_nutries[0,0],width = 0.25)
+axs[0,0].bar(X+0.25,meal_nutries[1,0],width = 0.25)
+axs[0,0].bar(X+0.5,meal_nutries[2,0],width = 0.25)
+axs[0,0].bar(X+0.75,meal_nutries[3,0],width = 0.25)
+axs[0,0].set_ylabel("calories")
+axs[0,0].set_xticks([0,0.25,0.5,0.75])
+axs[0,0].set_xticklabels(["breakfast","lunch","dinner","snacks"])
+save(fig,"nutrients_meal_plot.pdf")
+
 read_meals_from_db = False
 if read_meals_from_db:
     meals = []
@@ -199,9 +304,43 @@ for cat in tqdm(categories):
         entry[f"{nutri} std"] = stds[i]
     cat_wise_mean.append(entry)
 cat_wise_mean = pd.DataFrame(cat_wise_mean)
-cat_wise_mean
-#todo: plot cat_wise_mean
-#why is std so high doesn't make sense to me???
+selected_cat_wise_mean = cat_wise_mean[cat_wise_mean["category"].isin(selected_cats)]
+scwm = np.zeros((7,4))
+for i,k in enumerate(selected_cats):
+    row = selected_cat_wise_mean[selected_cat_wise_mean["category"]==k]
+    scwm[i,:] = row[["calories mean","carbs mean","fat mean", "protein mean"]]
+    
+#scwm = np.array(selected_cat_wise_mean[["calories mean","carbs mean","fat mean", "protein mean"]])
+scwm = scwm*[1,4,9,4]
+scwm = scwm.transpose()
+w= 1.0/scwm.shape[1]
+
+
+fig,axs = plt.subplots(nrows=1, ncols=1, figsize=(5.8, 3))
+X = np.arange(1)
+for j,row in enumerate(scwm[0]):
+    axs.bar(X+j*w,row,width = w )
+axs.set_ylabel("calories")
+axs.set_xticks([i*w for i in range(len(selected_cats))])
+axs.set_xticklabels(selected_cats,rotation=45,rotation_mode="anchor",ha="right")
+save(fig,"calories_selected_categories.pdf")
+
+X = np.arange(len(selected_cats))
+Y = np.arange(3)
+
+fig,axs = plt.subplots(nrows=1, ncols=1, figsize=(5.8, 2.5))
+axs.set_xticks(X)
+axs.set_xticklabels(selected_cats,rotation=45,rotation_mode="anchor",ha="left")
+axs.set_yticks(Y)
+axs.set_yticklabels(["carbs","fat","protein"])
+axs.xaxis.tick_top()
+image = axs.imshow(scwm[1:,:]/scwm[0,:],cmap="cividis")#viridis
+divider = make_axes_locatable(axs)
+cax = divider.append_axes("right", size="5%", pad=0.05)
+cbar = fig.colorbar(image,cax=cax)
+cbar.set_label('caloriewise % \n of nutrient in portion', rotation=270,labelpad=18)
+save(fig,"nutrition_distribution_categories.pdf")
+
 
 meal_df[meal_df["gender"]=="m"]["category"].value_counts()[:10]
 meal_df[meal_df["gender"]=="f"]["category"].value_counts()[:10]
