@@ -251,6 +251,9 @@ axs[0,0].bar(X+0.45,gender_nutries[1,0],width = 0.45,label="female")
 axs[0,0].set_ylabel("calories")
 axs[0,0].set_xticks([0,0.45])
 axs[0,0].set_xticklabels(["male","female"])
+for n, ax in enumerate(axs.flatten()):
+    ax.text(-0.1, 1.05, f"{string.ascii_lowercase[n]})", transform=ax.transAxes, 
+            size=font_size)
 save(fig,"nutrients_gender_plot.pdf")
 
 
