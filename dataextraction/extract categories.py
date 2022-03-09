@@ -128,15 +128,17 @@ X = np.arange(len(selected_cats))
 Y = np.arange(len(meals))
 fig,axs = plt.subplots(nrows=1, ncols=1, figsize=(5.8, 3))
 axs.set_xticks(X)
-axs.set_xticklabels(selected_cats,rotation=45,rotation_mode="anchor",ha="left")
+axs.set_xticklabels([x.lower() for x in selected_cats],rotation=45,rotation_mode="anchor",ha="left")
 axs.set_yticks(Y)
 axs.set_yticklabels(meals)
 axs.xaxis.tick_top()
+axs.set_xlabel("category")
+axs.set_ylabel("meal")
 image = axs.imshow(cat_plot_arr,cmap="cividis")#viridis
 divider = make_axes_locatable(axs)
 cax = divider.append_axes("right", size="5%", pad=0.05)
 cbar = fig.colorbar(image,cax=cax)
-cbar.set_label('likelihood of category in meal', rotation=270,labelpad=10)
+cbar.set_label('likelihood of category in meal', rotation=90)
 save(fig,"categories_to_meal_plot.pdf")
 
 
@@ -163,17 +165,17 @@ week_protein = week_protein/week_sum
 X = np.arange(7)
 fig,axs = plt.subplots(nrows=1, ncols=1, figsize=(5.8, 3.5))
 axs2 = axs.twinx()
-axs.set_ylabel("Avg. calories")
-axs2.plot(week_carbs,marker='s',label='carbs')
-axs2.plot(week_fats,marker='s',label='fat')
-axs2.plot(week_protein,marker='s',label='protein')
-axs2.set_ylabel("Avg. % of calories per nutrient")
+axs.set_ylabel("avg. calories")
+axs2.plot(100*week_carbs,marker='s',label='carbs')
+axs2.plot(100*week_fats,marker='s',label='fat')
+axs2.plot(100*week_protein,marker='s',label='protein')
+axs2.set_ylabel("avg. % of calories per nutrient")
 axs.plot(week_cals)
 axs.plot(week_cals,marker='o',color='gray',label='calories')
 fig.legend()
 axs.set_xticks(X)
-axs.set_xticklabels(["Mo","Tu","We","Th","Fr","Sa","Su"])
-axs.set_xlabel("Day of the Week")
+axs.set_xticklabels(["mon","tue","wed","thu","fri","sat","sun"])
+axs.set_xlabel("day of the week")
 save(fig,"calories_nutrients_per_weekday_plot.pdf")
 
 
@@ -186,7 +188,7 @@ weekdays = [y for y,x in interaction if x.weekday()<5]
 weekdays_X = [i for (i,(_,x)) in enumerate(interaction) if x.weekday()<5]
 weekends = [y for y,x in interaction if x.weekday()>=5]
 weekends_X = [i for (i,(_,x)) in enumerate(interaction) if x.weekday()>=5]
-markers = [x.strftime("%b") for _,x in interaction if x.day  == 1]
+markers = [x.strftime("%b").lower() for _,x in interaction if x.day  == 1]
 X = [i for i,(_,x) in enumerate(interaction) if x.day  == 1]
 christmas = [y for y,x in interaction if x.day == x.day == 25 and x.month == 12]
 christmas_X = [i for i,(_,x) in enumerate(interaction) if x.day == 25 and x.month == 12]
@@ -196,8 +198,8 @@ axs.plot(weekends_X,weekends,marker='s',markersize=1.5,label='weekend',linestyle
 axs.plot(christmas_X,christmas,marker='o',markersize=1.5,label='christmas',linestyle="None")
 axs.set_xticks(X)
 axs.set_xticklabels(markers)
-axs.set_xlabel("Day of year 2020")
-axs.set_ylabel("Interaction")
+axs.set_xlabel("day of the year 2020")
+axs.set_ylabel("# of food entries")
 axs.margins(x=0)
 fig.legend()
 save(fig,"interaction_plot.pdf")
@@ -229,6 +231,7 @@ for nutri in ("calories","carbs","fat","protein"):
             x = x*9
         elif nutri == "protein":
             x = x*4
+        meal_nutries.append((np.mean(x),np.std(x)))
 gender_nutries = np.array(gender_nutries)
 meal_nutries = np.array(meal_nutries)
 
@@ -238,8 +241,8 @@ for i in range(2):
     for k in range(2):
         if i + k == 0:
             continue
-        axs[i,k].bar(X,gender_nutries[::2,0][2*i+k]/gender_nutries[0,0],width = 0.45, label = "male")
-        axs[i,k].bar(X+0.45,gender_nutries[1::2,0][2*i+k]/gender_nutries[1,0],width = 0.45,label="female")
+        axs[i,k].bar(X,100*gender_nutries[::2,0][2*i+k]/gender_nutries[0,0],width = 0.45, label = "male")
+        axs[i,k].bar(X+0.45,100*gender_nutries[1::2,0][2*i+k]/gender_nutries[1,0],width = 0.45,label="female")
         axs[i,k].set_ylabel(f'% of {["calories","carbs","fat","protein"][2*i+k]} in calories')
         if k % 2 == 1:
             axs[i,k].yaxis.tick_right()
@@ -263,10 +266,10 @@ for i in range(2):
     for k in range(2):
         if i + k == 0:
             continue
-        axs[i,k].bar(X,meal_nutries[::4,0][2*i+k]/meal_nutries[0,0],width = 0.25)
-        axs[i,k].bar(X+0.25,meal_nutries[1::4,0][2*i+k]/meal_nutries[1,0],width = 0.25)
-        axs[i,k].bar(X+0.5,meal_nutries[2::4,0][2*i+k]/meal_nutries[2,0],width = 0.25)
-        axs[i,k].bar(X+0.75,meal_nutries[3::4,0][2*i+k]/meal_nutries[3,0],width = 0.25)
+        axs[i,k].bar(X,100*meal_nutries[::4,0][2*i+k]/meal_nutries[0,0],width = 0.25)
+        axs[i,k].bar(X+0.25,100*meal_nutries[1::4,0][2*i+k]/meal_nutries[1,0],width = 0.25)
+        axs[i,k].bar(X+0.5,100*meal_nutries[2::4,0][2*i+k]/meal_nutries[2,0],width = 0.25)
+        axs[i,k].bar(X+0.75,100*meal_nutries[3::4,0][2*i+k]/meal_nutries[3,0],width = 0.25)
         axs[i,k].set_ylabel(f'% of {["calories","carbs","fat","protein"][2*i+k]} in calories')
         if k % 2 == 1:
             axs[i,k].yaxis.tick_right()
@@ -329,7 +332,8 @@ for j,row in enumerate(scwm[0]):
     axs.bar(X+j*w,row,width = w )
 axs.set_ylabel("calories")
 axs.set_xticks([i*w for i in range(len(selected_cats))])
-axs.set_xticklabels(selected_cats,rotation=45,rotation_mode="anchor",ha="right")
+axs.set_xlabel("category")
+axs.set_xticklabels([x.lower() for x in selected_cats],rotation=45,rotation_mode="anchor",ha="right")
 save(fig,"calories_selected_categories_plot.pdf")
 
 X = np.arange(len(selected_cats))
@@ -337,15 +341,17 @@ Y = np.arange(3)
 
 fig,axs = plt.subplots(nrows=1, ncols=1, figsize=(5.8, 2.5))
 axs.set_xticks(X)
-axs.set_xticklabels(selected_cats,rotation=45,rotation_mode="anchor",ha="left")
+axs.set_xticklabels([x.lower() for x in selected_cats],rotation=45,rotation_mode="anchor",ha="left")
 axs.set_yticks(Y)
 axs.set_yticklabels(["carbs","fat","protein"])
+axs.set_xlabel("category")
+axs.set_ylabel("nutrient")
 axs.xaxis.tick_top()
 image = axs.imshow(scwm[1:,:]/scwm[0,:],cmap="cividis")#viridis
 divider = make_axes_locatable(axs)
 cax = divider.append_axes("right", size="5%", pad=0.05)
 cbar = fig.colorbar(image,cax=cax)
-cbar.set_label('caloriewise % \n of nutrient in portion', rotation=270,labelpad=18)
+cbar.set_label('caloriewise % \n of nutrient in portion', rotation=90)
 save(fig,"nutrition_distribution_categories_plot.pdf")
 
 
