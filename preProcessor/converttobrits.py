@@ -10,15 +10,6 @@ Uses the exported data an convert it in a format for putting it into BRITS
 
 
 """
-"""
-cat_count = {}
-for x in data:
-    for y in x:
-        l = len(set(y['category']))
-        if l not in cat_count:
-            cat_count[l] = 0
-        cat_count[l] += 1
-"""          
 import pickle
 from preProcessor.classifier import FoodClassificationCnnModel,Classifier,categories
 import numpy as np
@@ -27,16 +18,23 @@ import random
 
 
 export_non_norm = False
-export_categories = False
+export_categories = True
 only_max_user = False
+
+export_user_id = -1#151484
 export_day = True
-limit_data_per_user = 2
-len_x_t = 10
-time_data_file = 'preProcessor/time_data_big.pickle'
-limit_top_categories = -1#30 #only take the most used x cateogries
+limit_data_per_user = -1
+len_x_t = 17
+time_data_file = 'preProcessor/time_data_small.pickle'
+missing_percentage = 0.1
+train_percentage = 0.9 #amount of data should go to train set
+skip_over_cals = -1 #skip week if it has over x calories
+limit_top_categories = 30#-130 #only take the most used x cateogries
 max_cat = 7 #if we only use 7 categories we have 95% of data included
 no_not_categories = 10
 not_export_indexes = [0,9]#+list(range(no_not_categories,max_cat + no_not_categories))# indexes which shouldn't go missing (meal and categories)
+
+
 
 def flatten(t):
     return [item for sublist in t for item in sublist]
@@ -54,7 +52,8 @@ counted_categories = sorted([x for x in counted_categories.items()], key=(lambda
 if limit_top_categories > 0:
     counted_categories = [x for x,_ in counted_categories][:limit_top_categories]
 
-vals= ['calories','carbs','fat','protein','cholest','sodium','sugar','fiber']
+#vals= ['calories','carbs','fat','protein','cholest','sodium','sugar','fiber']
+vals= ['calories','carbs','fat','protein']
 mean = {}
 std = {}
 user_storage = {}
@@ -62,7 +61,6 @@ user_storage = {}
 random.seed(10)
 np.random.seed(10)
 
-train_only = False
 data_by_user= {}
 if limit_data_per_user > 0:
     for x in data:
@@ -77,7 +75,7 @@ if limit_data_per_user > 0:
             data_new.extend(random.sample(v,k=limit_data_per_user))
         else:
             data_new.extend(v)
-data = data_new
+    data = data_new
 """    
 data_new = []
 for series in data:
@@ -216,13 +214,16 @@ for x in data:
 
 if only_max_user:
     max_user = sorted(user_count.items(), key=lambda x:x[1],reverse = True)
-    max_user = max_user[49]
-    #max_user = max_user[0]
+    #max_user = max_user[49]
+    max_user = max_user[0]
     data = [s for s in data if s[0]['user'] == max_user[0]]
-    random.seed(10)
-    np.random.seed(10)
+    #random.seed(10)
+    #np.random.seed(10)
     #indexes = random.sample(range(len(data)),k=85)
     #data = [x for k,x in enumerate(data) if k in indexes]
+if export_user_id != -1:
+    data = [s for s in data if s[0]['user'] == export_user_id]
+    
 
 
 random.seed(10)
@@ -234,15 +235,15 @@ test = []
 train_nonnorm = []
 test_nonnorm =[]
 
-skip_over_cals = 3000 #skip week if it has over x calories
+
 for series in data:
-    drop_meal_indices = np.random.choice(range(len(series)),int(len(series)*0.1))
+    drop_meal_indices = np.random.choice(range(len(series)),int(len(series)*missing_percentage))
     brits_nonnorm = build_brits(series,drop_meal_indices,normalize=False)
     brits_norm = build_brits(series,drop_meal_indices,normalize=True)
     
-    if next((x for x in series if x['calories']>skip_over_cals),None) != None:
+    if skip_over_cals != -1 and next((x for x in series if x['calories']>skip_over_cals),None) != None:
         continue
-    if random.random() < 0.9 or train_only:
+    if random.random() < train_percentage:
         train.append(brits_norm)
         train_nonnorm.append(brits_nonnorm)
     else:
