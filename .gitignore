@@ -1,5 +1,8 @@
 secret.json
 *.db
 *.log
+*.apk
 client_secrets.json
 preProcessor/data/*
+plotting/plots/*
+imputation/data*
