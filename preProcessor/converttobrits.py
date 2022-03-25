@@ -25,7 +25,7 @@ export_user_id = -1#151484
 export_day = True
 limit_data_per_user = -1
 len_x_t = 17
-time_data_file = 'preProcessor/time_data_small.pickle'
+time_data_file = 'preProcessor/time_data_large.pickle'
 missing_percentage = 0.1
 train_percentage = 0.9 #amount of data should go to train set
 skip_over_cals = -1 #skip week if it has over x calories
@@ -52,8 +52,8 @@ counted_categories = sorted([x for x in counted_categories.items()], key=(lambda
 if limit_top_categories > 0:
     counted_categories = [x for x,_ in counted_categories][:limit_top_categories]
 
-#vals= ['calories','carbs','fat','protein','cholest','sodium','sugar','fiber']
-vals= ['calories','carbs','fat','protein']
+vals= ['calories','carbs','fat','protein','cholest','sodium','sugar','fiber']
+#vals= ['calories','carbs','fat','protein']
 mean = {}
 std = {}
 user_storage = {}
