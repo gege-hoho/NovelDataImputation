@@ -141,9 +141,6 @@ class MyFitnessPalCrawler:
                 if i == self.max_retries:
                     return callback(e)
 
-
-
-
     def post(self, endpoint, payload, callback=error_callback):
         """
         Sends a post request to the given endpoint with payload, retries max_retries times with a timeout

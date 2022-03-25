@@ -1,6 +1,6 @@
 import logging
 
-from databaseConnector.databaseConnector import SqliteConnector, database_date_time_format, MealItem
+from databaseConnector.databaseConnector import SqliteConnector, database_date_time_format
 from helper.helper import read_json, convert_int, isclose
 from helper.timer import Timer
 

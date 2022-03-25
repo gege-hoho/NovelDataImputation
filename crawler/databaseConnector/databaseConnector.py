@@ -35,9 +35,6 @@ select_count_user = "select count(*) from user"
 select_count_user_profile_crawled = "select count(*) from user where profile_crawl_time is not null"
 select_count_user_public_diary = "select count(*) from user where has_public_diary = 1"
 
-get_most_used_meal_item = "select  mi.* from meal_history mh, meal_item mi where mi.meal_item = mh.meal_item " \
-                          "group by mh.meal_item order by count(mh.meal_item)DESC limit ?"
-
 delete_meal_history_by_user = "delete from meal_history where user = ?"
 delete_meal_history_by_user_flat = "delete from meal_history_flat where user = ?"
 max_bulk_insert = 299
@@ -74,32 +71,6 @@ class User:
         return s
 
 
-class MealItem:
-    __slots__ = 'id', 'name', 'quick_add', 'calories', 'carbs', 'fat', 'protein', 'cholest', 'sodium', 'sugar', 'fiber'
-
-    def __init__(self, meal_data):
-        if len(meal_data) != 11:
-            raise Exception("length mismatch")
-        self.id = meal_data[0]
-        self.name = meal_data[1]
-        self.quick_add = meal_data[2]
-        self.calories = meal_data[3]
-        self.carbs = meal_data[4]
-        self.fat = meal_data[5]
-        self.protein = meal_data[6]
-        self.cholest = meal_data[7]
-        self.sodium = meal_data[8]
-        self.sugar = meal_data[9]
-        self.fiber = meal_data[10]
-
-    def __repr__(self):
-        s = "MealItem: ["
-        for x in MealItem.__slots__:
-            s += f"{x}: {getattr(self, x)} "
-        s += "]"
-        return s
-
-
 class MealHistoryFlat:
     __slots__ = 'id', 'date', 'meal', 'user', 'name', 'quick_add', 'calories', \
                 'carbs', 'fat', 'protein', 'cholest', 'sodium', 'sugar', 'fiber'
@@ -125,25 +96,6 @@ class MealHistoryFlat:
     def __repr__(self):
         s = "MealHistoryFlat: ["
         for x in MealHistoryFlat.__slots__:
-            s += f"{x}: {getattr(self, x)} "
-        s += "]"
-        return s
-
-
-class MealHistory:
-    __slots__ = 'user', 'meal_item', 'date', 'meal'
-
-    def __init__(self, meal_history_data):
-        if len(meal_history_data) != 4:
-            raise Exception("length mismatch")
-        self.user = meal_history_data[0]
-        self.meal_item = meal_history_data[1]
-        self.date = meal_history_data[2]
-        self.meal = meal_history_data[3]
-
-    def __repr__(self):
-        s = "MealHistory: ["
-        for x in MealHistory.__slots__:
             s += f"{x}: {getattr(self, x)} "
         s += "]"
         return s
@@ -200,21 +152,6 @@ class SqliteConnector:
         if cur_created:
             cur_cursor.close()
         return res[0] != 0
-
-    def get_most_used_meal_item(self, limit):
-        """
-        Gets the top limit used meal items from db
-        :param limit: how many items at max
-        :type limit: int
-        :return: List of MealItems
-        :rtype: list
-        """
-        cur = self.con.cursor()
-        cur.execute(get_most_used_meal_item, (limit,))
-        result = cur.fetchall()
-        result = [MealItem(x) for x in result]
-        cur.close()
-        return result
 
     def create_users(self, usernames):
         """
