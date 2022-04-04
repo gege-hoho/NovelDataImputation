@@ -295,10 +295,10 @@ if read_meals_from_db:
     for _,row in tqdm(food_data_no_duplicates.iterrows(),total=len(food_data_no_duplicates)):
         meals.extend(get_meal_by_user_date(con,row["user"],row["date"]))
     meal_df = pd.DataFrame(meals)
-    with open('meals.pickle', 'wb') as file:
+    with open('plotting/meals.pickle', 'wb') as file:
         pickle.dump(meal_df, file)    
 else:
-    with open('meals.pickle', 'rb') as file:
+    with open('plotting/meals.pickle', 'rb') as file:
         meal_df = pickle.load(file)
 
 meal_df = meal_df[meal_df["calories"]<2000]
