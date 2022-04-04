@@ -6,3 +6,5 @@ client_secrets.json
 preProcessor/data/*
 plotting/plots/*
 imputation/data*
+__pycache__/
+*.pyc
