@@ -7,10 +7,12 @@ Created on Sun Jan  9 14:52:25 2022
 """
 import sqlite3
 import datetime
-from preProcessor.classifier import FoodClassificationCnnModel,Classifier,categories
+from classifier import FoodClassificationCnnModel,Classifier,categories
 import time
 import json
 import pickle
+import argparse
+
 
 # Gets all meals for a user for days where there are mor than 1600 kcal and at least breakfast lunch and dinner
 select_meal_history_filtered_by_user = """
@@ -42,11 +44,6 @@ mlf.user = ? and
             where a.s > 1600)
 """
 
-select_user_with_history = """
-select u.user from user u
-where u.food_crawl_time is not null and
-exists(select * from meal_history_flat mlf where mlf.user = u.user) limit 10000
-"""
 
 def get_meal_history_flat_filtered_by_user_id(con, user, snacks=True):
   cur = con.cursor()
@@ -74,7 +71,13 @@ def get_meal_history_flat_filtered_by_user_id(con, user, snacks=True):
   cur.close()
   return res
 
-def get_user_ids_with_history(con):
+def get_user_ids_with_history(con,no_user):
+    
+    select_user_with_history = f"""
+    select u.user from user u
+    where u.food_crawl_time is not null and
+    exists(select * from meal_history_flat mlf where mlf.user = u.user) limit {no_user}
+    """
     cur = con.cursor()
     cur.execute(select_user_with_history)
     res = cur.fetchall()
@@ -179,34 +182,41 @@ def convert_to_time_series(frags):
         time_fragments.append(user_fragment)
     return time_fragments
 
-#with  open('time_data_big3.pickle', 'rb') as file:
-#   data = pickle.load(file) 
-#crawled_users = set([x[0]['user'] for x in data])
-data = []
-crawled_users = []
+if __name__ == '__main__':
 
-t0 = time.time()
-classy = Classifier("preProcessor/data/models")
-con = sqlite3.connect("preProcessor/data/mfp.db")
-user_ids = get_user_ids_with_history(con)
-time_series = data
-for x in user_ids:
-    if x <= max(crawled_users):
-        continue
-    print(f"Curr len: {len(time_series)} Now Processing: {x}")
-    l = get_meal_history_flat_filtered_by_user_id(con, x,snacks=False)
-    frags = extract_fragments_from_meals(l)
-    process_fragments(classy,frags)
-    time_series.extend(convert_to_time_series(frags))
-    #if len(time_series) > 400:
-    #    break
-t1 = time.time()
-print(f"TIme Elapsed {(t1-t0):2f}")
-print(len(time_series))
-
-with open('time_data_big_test.pickle', 'wb') as outfile:
-    pickle.dump(time_series, outfile)
-
-#with open('data.json', 'w') as f:
-#    json.dump(data, f)
-
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('no_user', metavar='N', type=int,
+                        help='number of users to get from db for export')
+    parser.add_argument('model_folder', metavar='N', type=str,
+                        help='folderpath were the food class model stuff is saved')
+    parser.add_argument('db_file_name', metavar='N', type=str,
+                        help='folderpath to mfp db')
+    parser.add_argument('output_path', metavar='N', type=str,
+                        help='folderpath were pickle is saved')
+    
+    
+    args = parser.parse_args()
+    no_user = args.no_user
+    db_file_name = args.db_file_name
+    model_folder = args.model_folder
+    output_path = args.output_path
+    print(model_folder)
+    
+    data = []
+    t0 = time.time()
+    classy = Classifier(model_folder)
+    con = sqlite3.connect(db_file_name)
+    user_ids = get_user_ids_with_history(con,no_user)
+    time_series = data
+    for x in user_ids:
+        print(f"Curr len: {len(time_series)} Now Processing: {x}")
+        l = get_meal_history_flat_filtered_by_user_id(con, x,snacks=False)
+        frags = extract_fragments_from_meals(l)
+        process_fragments(classy,frags)
+        time_series.extend(convert_to_time_series(frags))
+    t1 = time.time()
+    print(f"Time Elapsed {(t1-t0):2f}")
+    print(len(time_series))
+    
+    with open(output_path, 'wb') as outfile:
+        pickle.dump(time_series, outfile)

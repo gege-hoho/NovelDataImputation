@@ -183,6 +183,7 @@ class Classifier:
         self.embedding_size = 300
         bigram_model = Phrases.load(f"{model_folder}/bigram_model.pkl")
         self.bigram_model = Phraser(bigram_model)
+        nltk.download('omw-1.4')
         nltk.download('stopwords')
         nltk.download('wordnet')
         self.lst_stopwords = nltk.corpus.stopwords.words("english")
