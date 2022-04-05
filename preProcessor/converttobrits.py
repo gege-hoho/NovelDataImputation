@@ -11,29 +11,54 @@ Uses the exported data an convert it in a format for putting it into BRITS
 
 """
 import pickle
-from preProcessor.classifier import categories
+from classifier import categories
 import numpy as np
 import math
 import random
+import argparse
 
+if __name__ == '__main__':
 
-export_non_norm = False
-export_categories = True
-only_max_user = False
+    parser = argparse.ArgumentParser(description='Convert full weeks to BRITS and create artificial gaps')
+    parser.add_argument('input', type=str, help='Pickle file used as input')
+    parser.add_argument('output', type=str, help='Folderpath were to put the output files')
+    parser.add_argument('--user_id', nargs='?', default=-1, type=int,
+                         help='Only weeks of a specific user-id are extracted or -1 (default)')
+    parser.add_argument('--non_norm', nargs='?', default=False, type=bool,
+                         help='If true export as non normalized')
+    parser.add_argument('--max_cat', nargs='?', default=0, type=int,
+                         help='Number of categories to be exported per sequence entry or 0 (default)')
+    parser.add_argument('--only_max_user', nargs='?', default=False, type=bool,
+                         help='If true only entries of the user with the most entries is exported')
+    parser.add_argument('--limit_data_per_user', nargs='?', default=-1, type=int,
+                         help='Max number of weeks for one user exported or -1 for unlimited (default)')
+    parser.add_argument('--missing', nargs='?', default=0.1, type=float,
+                         help='Percentage of missing meals 0.1(default)')
+    parser.add_argument('--train', nargs='?', default=0.9, type=float,
+                         help='Percentage of meals in train set 0.9(default)')
+    parser.add_argument('--limit_categories', nargs='?', default=30, type=int,
+                         help='only take the most used x cateogries (default 30)')
+    parser.add_argument('--skip_over_cals', nargs='?', default=-1, type=int,
+                         help='skip weeks with meals over x calories or -1 (default)')
+    args = parser.parse_args()
 
-export_user_id = -1#151484
-export_day = True
-limit_data_per_user = -1
-len_x_t = 17
-time_data_file = 'preProcessor/time_data_large.pickle'
-missing_percentage = 0.1
-train_percentage = 0.9 #amount of data should go to train set
-skip_over_cals = -1 #skip week if it has over x calories
-limit_top_categories = 30#-130 #only take the most used x cateogries
-max_cat = 7 #if we only use 7 categories we have 95% of data included
-no_not_categories = 10
-not_export_indexes = [0,9]#+list(range(no_not_categories,max_cat + no_not_categories))# indexes which shouldn't go missing (meal and categories)
-
+    export_user_id = args.user_id
+    export_non_norm = args.non_norm
+    time_data_file = args.input
+    folder = args.output
+    max_cat = args.max_cat #if we only use 7 categories we have 95% of data included
+    only_max_user = args.only_max_user
+    limit_data_per_user = args.limit_data_per_user
+    
+    
+    missing_percentage = args.missing
+    train_percentage = args.train #amount of data should go to train set
+    skip_over_cals = args.skip_over_cals #skip week if it has over x calories
+    limit_top_categories = args.limit_categories
+   
+    no_not_categories = 10
+    not_export_indexes = [0,9]#+list(range(no_not_categories,max_cat + no_not_categories))# indexes which shouldn't go missing (meal and categories) 
+    len_x_t = max_cat + no_not_categories
 
 
 def flatten(t):
@@ -146,10 +171,8 @@ def convert_meal_to_brits(curr_meal,normalize):
             brits_day_data.append(convert_variable(curr_meal,val))
         else:
             brits_day_data.append(curr_meal[val])
-    if export_day:
-        #print(curr_meal['date'].weekday())
-        brits_day_data.append(curr_meal['date'].weekday())
-    if export_categories:
+    brits_day_data.append(curr_meal['date'].weekday())      
+    if max_cat > 0:
         brits_day_data.extend(daily_categories)
     
     if len(brits_day_data) != len_x_t:
@@ -196,69 +219,64 @@ def build_brits(series,drop_meal_indices,normalize=True):
     backwards = convert_time_series(values[::-1],masks[::-1],deltas_back,evals[::-1],eval_masks[::-1])
     return {'forward': forwards,'backward': backwards}
     
-folder = 'imputation/data'
+if __name__ == '__main__':
     
-with open(f'{folder}/brits_normalization.pickle','wb') as out:
-    pickle.dump({'mean':mean,'std':std},out)
-print("Lets Go")
-
-user_count = {}
-for x in data:
-    user = x[0]['user']
-    for y in x:
-        if user != y['user']:
-            raise Exception("User need to be the same over whole time")
-    if user not in user_count:
-        user_count[user] = 0
-    user_count[user] += 1
-
-if only_max_user:
-    max_user = sorted(user_count.items(), key=lambda x:x[1],reverse = True)
-    #max_user = max_user[49]
-    max_user = max_user[0]
-    data = [s for s in data if s[0]['user'] == max_user[0]]
-    #random.seed(10)
-    #np.random.seed(10)
-    #indexes = random.sample(range(len(data)),k=85)
-    #data = [x for k,x in enumerate(data) if k in indexes]
-if export_user_id != -1:
-    data = [s for s in data if s[0]['user'] == export_user_id]
+    with open(f'{folder}/brits_normalization.pickle','wb') as out:
+        pickle.dump({'mean':mean,'std':std},out)
+    print("Lets Go")
     
-
-
-random.seed(10)
-np.random.seed(10)
-
-train = []
-test = []
-
-train_nonnorm = []
-test_nonnorm =[]
-
-
-for series in data:
-    drop_meal_indices = np.random.choice(range(len(series)),int(len(series)*missing_percentage))
-    brits_nonnorm = build_brits(series,drop_meal_indices,normalize=False)
-    brits_norm = build_brits(series,drop_meal_indices,normalize=True)
+    user_count = {}
+    for x in data:
+        user = x[0]['user']
+        for y in x:
+            if user != y['user']:
+                raise Exception("User need to be the same over whole time")
+        if user not in user_count:
+            user_count[user] = 0
+        user_count[user] += 1
     
-    if skip_over_cals != -1 and next((x for x in series if x['calories']>skip_over_cals),None) != None:
-        continue
-    if random.random() < train_percentage:
-        train.append(brits_norm)
-        train_nonnorm.append(brits_nonnorm)
-    else:
-        test.append(brits_norm)
-        test_nonnorm.append(brits_nonnorm)
-
-print(len(train)+len(test))
-
-with open(f'{folder}/brits_test.pickle',"wb") as out:
-    pickle.dump(test,out)
-with open(f'{folder}/brits_train.pickle',"wb") as out:
-    pickle.dump(train,out)
-
-if export_non_norm:  
-    with open(f'{folder}/brits_train_nonnorm.pickle',"wb") as out:
-        pickle.dump(train_nonnorm,out)
-    with open(f'{folder}/brits_test_nonnorm.pickle',"wb") as out:
-        pickle.dump(test_nonnorm,out)
+    if only_max_user:
+        max_user = sorted(user_count.items(), key=lambda x:x[1],reverse = True)
+        max_user = max_user[0]
+        data = [s for s in data if s[0]['user'] == max_user[0]]
+    if export_user_id != -1:
+        data = [s for s in data if s[0]['user'] == export_user_id]
+        
+    
+    
+    random.seed(10)
+    np.random.seed(10)
+    
+    train = []
+    test = []
+    
+    train_nonnorm = []
+    test_nonnorm =[]
+    
+    
+    for series in data:
+        drop_meal_indices = np.random.choice(range(len(series)),int(len(series)*missing_percentage))
+        brits_nonnorm = build_brits(series,drop_meal_indices,normalize=False)
+        brits_norm = build_brits(series,drop_meal_indices,normalize=True)
+        
+        if skip_over_cals != -1 and next((x for x in series if x['calories']>skip_over_cals),None) != None:
+            continue
+        if random.random() < train_percentage:
+            train.append(brits_norm)
+            train_nonnorm.append(brits_nonnorm)
+        else:
+            test.append(brits_norm)
+            test_nonnorm.append(brits_nonnorm)
+    
+    print(len(train)+len(test))
+    
+    with open(f'{folder}/brits_test.pickle',"wb") as out:
+        pickle.dump(test,out)
+    with open(f'{folder}/brits_train.pickle',"wb") as out:
+        pickle.dump(train,out)
+    
+    if export_non_norm:  
+        with open(f'{folder}/brits_train_nonnorm.pickle',"wb") as out:
+            pickle.dump(train_nonnorm,out)
+        with open(f'{folder}/brits_test_nonnorm.pickle',"wb") as out:
+            pickle.dump(test_nonnorm,out)

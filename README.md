@@ -1,4 +1,4 @@
-#Crawler
+# Crawler
 
 The crawler can be configured using `config.json` and `secret.json`.
 
@@ -74,4 +74,54 @@ Sequences are stored and outputted in a pickle file.
 `python3 export.py 20 "data/models" "/home/gregor/Uni/Masterarbeit/preProcessor/data/mfp.db" "test.pickle"`
 
 ### converttobrits.py
+`converttobrits.py` converts the pickle exported from `export.py` 
+and creates the dataformat used in the `BRITS` notebook in order to train
+the imputation model.
 
+It creates two files: `brits_test.pickle` and `brits_train.pickle`, with both having
+the same format:
+```json
+[
+  {
+    "forward": [
+      {
+        "values": [1.0, -11.02,...],
+        "masks": [1.0,1.0,..],
+        "deltas": [1.0,1.0,...],
+        "eval_masks": [0.0,0.0,...],
+        "evals": [1.0, 4.23,...]
+      },
+      ...
+    ],
+    "backward": [...]
+  },
+  {...}
+]
+```
+Each file contains a list of n dictionaries for n samples in the test/train set.
+Each dictionary contains `forward` and `backward` entries. `backward` is as `forward` but reversed.
+`forward` and `backward` is a list of 28 entries for one sequence. Each entry in the sequence has:
+* `values`: values with artificial missing set to 0 (mealtype,calories,carbs,fat,protein,cholest,sodium,sugar,fiber,weekday)
+* `evals`: like values but without artificial gaps
+* `masks`: indicate if value is missing (1 for present, 0 for missing)
+* `deltas`: timesteps since last present value (1 if last value was present, 2 if one before was missing,...)
+* `eval_masks`: 1 if `evals` is present and values is missing, 0 if `value` is present
+
+The script can take several arguments
+
+positional arguments:
+*  input: Pickle file used as input
+*  output: Folderpath were to put the output files
+
+optional arguments:
+*  --user_id [USER_ID]: Only weeks of a specific user-id are extracted or -1 (default)
+*  --non_norm [NON_NORM]: If true export as non normalized
+*  --max_cat [MAX_CAT]: Number of categories to be exported per sequence entry or 0 (default)
+*  --only_max_user [ONLY_MAX_USER]: If true only entries of the user with the most entries is exported
+*  --limit_data_per_user [LIMIT_DATA_PER_USER]: Max number of weeks for one user exported or -1 for unlimited (default)
+*  --missing [MISSING]: Percentage of missing meals 0.1(default)
+*  --train [TRAIN]: Percentage of meals in train set 0.9(default)
+*  --limit_categories [LIMIT_CATEGORIES]: only take the most used x cateogries (default 30)
+*  --skip_over_cals [SKIP_OVER_CALS]: skip weeks with meals over x calories or -1 (default)
+
+The files from the output path are then used in the BRITS Notebook.

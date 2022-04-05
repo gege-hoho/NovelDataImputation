@@ -184,14 +184,14 @@ def convert_to_time_series(frags):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser = argparse.ArgumentParser(description='Export full weeks from db to pickle')
     parser.add_argument('no_user', metavar='N', type=int,
                         help='number of users to get from db for export')
-    parser.add_argument('model_folder', metavar='N', type=str,
+    parser.add_argument('model_folder', metavar='M', type=str,
                         help='folderpath were the food class model stuff is saved')
-    parser.add_argument('db_file_name', metavar='N', type=str,
+    parser.add_argument('db_file_name', metavar='D', type=str,
                         help='folderpath to mfp db')
-    parser.add_argument('output_path', metavar='N', type=str,
+    parser.add_argument('output_path', metavar='O', type=str,
                         help='folderpath were pickle is saved')
     
     
