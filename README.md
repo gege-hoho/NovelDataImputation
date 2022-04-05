@@ -26,25 +26,52 @@ The crawler can be configured using `config.json` and `secret.json`.
 * `crawler-max-retries`: maximum time of retrying if a request timeout before exiting
 * `database-backup-time`: time interval in hours at which backups from the database will be created
 
-#BRITS
-##Data export from Database to BRITS
+# BRITS
+## Data export from Database to BRITS
 The data in the SQLite database is in no format that can be used by BRITS.
 Two scripts are responsible for this. Both are located in the `preProcessor` folder.
-###prerequisites
+### prerequisites
 * Have python packages installed:  pytorch, nltk, gensim
 * Have SQLite3 installed
 * Have a crawled database
 * Have the food classification model folder (with bigram model, word2vec model and classifier)
   * Download here: https://syncandshare.lrz.de/getlink/fiXhWt3aXmHZeEZJDFEzXvTG/models.zip
   * Or train self in FoodItemClassification3.ipynb and WordEmbeddingModel.ipynb
-###export.py
+
+### classifier.py
+`classifier.py` contains a pytorch model representation of the `FoodClassificationCnnModel`,
+trained in the FoodClassification3 Notebook. It also contains a wrapper, that handles the initialisation
+of the Pytorch model and allows for classification of food items based on the bigram model and the word2vec model:
+```python
+# path to a folder containing: 
+# the bigrammodel: bigram_model.pkl
+# the word2vec model: mymodel
+# the classification model: model93.2
+model_folder = "./" 
+classy = Classifier(model_folder)
+
+cat = classy.classify("Homemade - Grilled Turkey Burger") # gets category as number
+cat = classy.get_cat_name(cat) # convert to category name
+print(cat)# -> Meat/Poultry/Other Animals
+
+# or only do tokenization and bigram detection
+tokens = classy.preprocess("Powerade - Zero - Fruit Punch (32 Fl oz)") 		
+print(tokens) # -> [powerade zero, fruit punch] 
+# and do the embedding
+classy.embedd(tokens) #-> list of 300 dimensional token vectors
+```
+
+### export.py
 `export.py` extract only full meal sequences from the db. 
 A sequence is full if the day has at least 1600 kcal and breakfast, lunch and dinner
 Sequences are stored and outputted in a pickle file.
-####arguments
+#### arguments
 1. number of users to request from database
 2. folderpath to food classification model folder
 3. path to database file
-4. output path
-####example
+4. pickle output path
+#### example
 `python3 export.py 20 "data/models" "/home/gregor/Uni/Masterarbeit/preProcessor/data/mfp.db" "test.pickle"`
+
+### converttobrits.py
+

@@ -11,7 +11,7 @@ Uses the exported data an convert it in a format for putting it into BRITS
 
 """
 import pickle
-from preProcessor.classifier import FoodClassificationCnnModel,Classifier,categories
+from preProcessor.classifier import categories
 import numpy as np
 import math
 import random
