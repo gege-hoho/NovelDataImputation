@@ -26,20 +26,17 @@ The crawler can be configured using `config.json` and `secret.json`.
 * `crawler-max-retries`: maximum time of retrying if a request timeout before exiting
 * `database-backup-time`: time interval in hours at which backups from the database will be created
 
-# BRITS
-## Data export from Database to BRITS
-The data in the SQLite database is in no format that can be used by BRITS.
-Two scripts are responsible for this. Both are located in the `preProcessor` folder.
-### prerequisites
-* Have python packages installed:  pytorch, nltk, gensim
-* Have SQLite3 installed
-* Have a crawled database
-* Have the food classification model folder (with bigram model, word2vec model and classifier)
-  * Download here: https://syncandshare.lrz.de/getlink/fiXhWt3aXmHZeEZJDFEzXvTG/models.zip
-  * Or train self in FoodItemClassification3.ipynb and WordEmbeddingModel.ipynb
+# FoodClassification
+## Bigrammodel and Word2Vec embedding
+`preProcessor/FoodCategories/WordEmbeddingModel.ipynb` contains the jupyter notebook for the training of the wordembedding an bigram model.
+Further documentation can be found there
 
-### classifier.py
-`classifier.py` contains a pytorch model representation of the `FoodClassificationCnnModel`,
+## FoodClassifier Training
+`preProcessor/FoodCategories/FoodItemClassification3.ipynb` contains the jupyter notebook for the training of the classifier.
+Further documentation can be found there
+
+## classifier.py
+`preProcessorr/classifier.py` contains a pytorch model representation of the `FoodClassificationCnnModel`,
 trained in the FoodClassification3 Notebook. It also contains a wrapper, that handles the initialisation
 of the Pytorch model and allows for classification of food items based on the bigram model and the word2vec model:
 ```python
@@ -61,6 +58,19 @@ print(tokens) # -> [powerade zero, fruit punch]
 classy.embedd(tokens) #-> list of 300 dimensional token vectors
 ```
 
+
+# BRITS
+## Data export from Database to BRITS
+The data in the SQLite database is in no format that can be used by BRITS.
+Two scripts are responsible for this. Both are located in the `preProcessor` folder.
+### prerequisites
+* Have python packages installed:  pytorch, nltk, gensim
+* Have SQLite3 installed
+* Have a crawled database
+* Have the food classification model folder (with bigram model, word2vec model and classifier)
+  * Download here: https://syncandshare.lrz.de/getlink/fiXhWt3aXmHZeEZJDFEzXvTG/models.zip
+  * Or train self in FoodItemClassification3.ipynb and WordEmbeddingModel.ipynb
+  
 ### export.py
 `export.py` extract only full meal sequences from the db. 
 A sequence is full if the day has at least 1600 kcal and breakfast, lunch and dinner
@@ -78,6 +88,7 @@ Sequences are stored and outputted in a pickle file.
 and creates the dataformat used in the `BRITS` notebook in order to train
 the imputation model.
 
+#### output format
 It creates two files: `brits_test.pickle` and `brits_train.pickle`, with both having
 the same format:
 ```json
@@ -107,6 +118,7 @@ Each dictionary contains `forward` and `backward` entries. `backward` is as `for
 * `deltas`: timesteps since last present value (1 if last value was present, 2 if one before was missing,...)
 * `eval_masks`: 1 if `evals` is present and values is missing, 0 if `value` is present
 
+#### arguments
 The script can take several arguments
 
 positional arguments:
@@ -125,3 +137,10 @@ optional arguments:
 *  --skip_over_cals [SKIP_OVER_CALS]: skip weeks with meals over x calories or -1 (default)
 
 The files from the output path are then used in the BRITS Notebook.
+
+#### example
+`python3 converttobrits.py --train 0.8 'data/time_data_small.pickle' '../imputation/data'`
+## BRITS training
+The training of BRITS happens in the jupyter notebook `imputation/BRITS/BRITS.ipynb`
+
+
