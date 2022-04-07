@@ -142,5 +142,5 @@ The files from the output path are then used in the BRITS Notebook.
 `python3 converttobrits.py --train 0.8 'data/time_data_small.pickle' '../imputation/data'`
 ## BRITS training
 The training of BRITS happens in the jupyter notebook `imputation/BRITS/BRITS.ipynb`
-
+Further documentation can be found there
 
